@@ -25,7 +25,7 @@ export class AudioEngine {
     this.masterGain.connect(this.ctx.destination);
     
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = 0.7;
+    this.musicGain.gain.value = 0.1;
     this.musicGain.connect(this.masterGain);
 
     this.sfxGain = this.ctx.createGain();
