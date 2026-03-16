@@ -183,11 +183,6 @@ class Game {
     this.ghostDiffTimer = 0;
     this.currentThrottle = 0;
     this.focusedElement = null;
-    this.upgrades = { 
-      0: { speed: 0, handling: 0, armor: 0 },
-      1: { speed: 0, handling: 0, armor: 0 },
-      2: { speed: 0, handling: 0, armor: 0 }
-    };
     this.settings = {
       audio: { master: 0.5, music: 0.1, sfx: 0.8 },
       kb: {
@@ -590,6 +585,16 @@ class Game {
     };
     window.addEventListener('click', requestFS);
     window.addEventListener('touchstart', requestFS);
+
+    const fsBtn = document.getElementById('btn-fullscreen');
+    if (this.isMobile) {
+      fsBtn.style.display = 'block';
+      fsBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(e => console.log(e));
+        }
+      });
+    }
 
     document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('char-select'); this.renderCharList(); });
     document.getElementById('btn-campaign').addEventListener('click', () => { 
