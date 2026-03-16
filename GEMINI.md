@@ -5,7 +5,7 @@
 
 ### Core Technologies
 - **Rendering:** [Three.js](https://threejs.org/) for 3D graphics and world management.
-- **Procedural Graphics:** [TexGenJS](https://github.com/mrdoob/texgen.js) for runtime-generated GLSL textures based on descriptive words.
+- **Procedural Graphics:** [TexGenJS](https://github.com/tonym128/texgen) for runtime-generated GLSL textures based on descriptive words.
 - **Visual Effects:** [Postprocessing](https://github.com/vanruesc/postprocessing) for motion blur, chromatic aberration, and pixelation.
 - **Audio Engine:** Custom Web Audio API-based techno soundtrack generator.
 - **Build System:** [Vite](https://vitejs.dev/) for development and asset bundling.
