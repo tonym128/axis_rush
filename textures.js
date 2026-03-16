@@ -12,6 +12,8 @@ const WORDS = {
   "magenta": "c = vec3(1.0, 0.1, 1.0);",
   "black": "c = vec3(0.0);",
   "white": "c = vec3(1.0);",
+  "silver": "c = vec3(0.75, 0.75, 0.8);",
+  "gold": "c = vec3(1.0, 0.84, 0.0);",
   "orange": "c = vec3(1.0, 0.5, 0.1);",
   "grid": "f = (sin(p.x*20.0)*0.5+0.5) * (sin(p.y*20.0)*0.5+0.5); c = mix(c, c*f, 0.5);",
   "neon": "c = mix(c, vec3(0.1, 1.0, 0.1), 0.5); c *= 2.0;",
@@ -29,7 +31,16 @@ const WORDS = {
   "rough": "c *= (0.9 + 0.1*random(p));",
   "plasma": "f = sin(p.x*10.0) + sin(p.y*10.0); c = mix(c, vec3(f, 0.0, 1.0-f), 0.5);",
   "stripes": "f = step(0.5, fract(p.x * 10.0)); c = mix(c, c*0.5, f);",
-  "circuit": "f = step(0.95, random(floor(p*20.0))); c = mix(c, vec3(0.0, 1.0, 0.0), f);"
+  "crate": "vec2 b = abs(p - 0.5); f = step(0.4, max(b.x, b.y)); c = mix(c, vec3(0.4, 0.2, 0.1), f); f = step(0.45, max(b.x, b.y)); c = mix(c, vec3(0.1), f);",
+  "electric": "f = sin(p.x * 20.0 + u_time * 10.0) * sin(p.y * 20.0); c = mix(vec3(0.0, 0.5, 1.0), vec3(1.0), f); f = step(0.9, random(p + fract(u_time))); c += vec3(f);",
+  "circuit": "f = step(0.95, random(floor(p*20.0))); c = mix(c, vec3(0.0, 1.0, 0.0), f);",
+  "nebula": "f = fbm(p*2.0, 10.0); c = mix(c, vec3(0.5, 0.0, 0.8), f); f = fbm(p*4.0 + 10.0, 10.0); c = mix(c, vec3(0.0, 0.8, 0.8), f*0.5);",
+  "lava_bg": "f = fbm(p*3.0, 5.0); c = mix(vec3(0.2, 0.0, 0.0), vec3(1.0, 0.3, 0.0), f);",
+  "ice_bg": "f = fbm(p*4.0, 8.0); c = mix(vec3(0.7, 0.9, 1.0), vec3(1.0), f*0.5);",
+  "toxic_bg": "f = fbm(p*2.0, 3.0); c = mix(vec3(0.0, 0.1, 0.0), vec3(0.4, 0.8, 0.1), f);",
+  "sunrise": "f = p.y; c = mix(vec3(1.0, 0.4, 0.0), vec3(0.0, 0.1, 0.4), f);",
+  "matrix": "f = step(0.9, random(vec2(floor(p.x*20.0), p.y*10.0 + u_time))); c = mix(c, vec3(0.0, 1.0, 0.0), f);",
+  "checkered": "f = step(0.5, fract(p.x * 10.0)) == step(0.5, fract(p.y * 2.0)) ? 1.0 : 0.0; c = mix(vec3(0.0), vec3(1.0), f);"
 };
 
 function parseWords(str) {
@@ -96,6 +107,14 @@ export class TextureManager {
       map: map,
       roughness: 0.5,
       metalness: 0.2,
+      ...options
+    });
+  }
+
+  getBasicMaterial(words, options = {}) {
+    const map = this.getTexture(words);
+    return new THREE.MeshBasicMaterial({
+      map: map,
       ...options
     });
   }

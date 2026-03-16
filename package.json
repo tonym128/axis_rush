@@ -22,6 +22,7 @@
     "picocolors": "^1.1.1",
     "picomatch": "^4.0.3",
     "postcss": "^8.5.8",
+    "postprocessing": "^6.38.3",
     "rolldown": "^1.0.0-rc.9",
     "source-map-js": "^1.2.1",
     "texgenjs": "^1.1.0",

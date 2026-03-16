@@ -1,0 +1,10 @@
+- Make the upgrades specific to each vehicle
+- Show the track on the mini-map in game
+- On the attract screen, don't show the player marker orbs on the game screen or the mini map (on the map selection screen)
+- Add 5 lines for each character for each event they have, and randomly choose from them, make the lines specific to the character and their story
+- Allow other characters to talk to each other during the game
+- On the character dialog show who they are talking to, if it's character specific
+- Expand the story and make it part of the gameplay
+- Add a game start intro for the league
+- Add an intro scene for each character, with story motivation, goals, arch enemies and their corporation
+- Add an outro scene for each character to focus on their victory and what is means for them, the future and their corporation
