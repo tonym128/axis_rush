@@ -173,8 +173,9 @@ class Game {
     sunLight.layers.enable(1);
     this.scene.add(sunLight);
     this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 1;
-    this.leagueTrackIndex = 0; this.leagueScores = {};
-    this.leagueData = { inProgress: false, trackIndex: 0, scores: {}, pilotId: 0, vehicleId: 0 };
+    this.campaignTrackIndex = 0; this.campaignScores = {};
+    // Per-pilot data: { pilotId: { campaign: { inProgress, trackIndex, scores, vehicleId, difficulty }, upgrades: { vehicleType: { speed, handling, armor } } } }
+    this.pilotData = {};
     this.player = null; this.ais = []; this.track = null; this.previewTrack = null; this.previewSky = null; this.previewVehicle = null; this.weaponSystem = null;
     this.clock = new THREE.Clock(); this.inputs = { accelerate: false, brake: false, left: false, right: false, switch: false, fire: false, boost: false, rearView: false };
     this.startCamPos = new THREE.Vector3(); this.countdownTimer = 0; this.countdownTotal = 3.0; this.cameraShakeIntensity = 0;
@@ -220,22 +221,18 @@ class Game {
     if (saved) {
       const data = JSON.parse(saved);
       this.credits = data.credits || 0;
-      this.upgrades = data.upgrades || { 
-        0: { speed: 0, handling: 0, armor: 0 },
-        1: { speed: 0, handling: 0, armor: 0 },
-        2: { speed: 0, handling: 0, armor: 0 }
-      };
-      // Migration: if old upgrades format exists, copy to all vehicles
-      if (data.upgrades && data.upgrades.speed !== undefined) {
-         const old = data.upgrades;
-         this.upgrades = { 
-           0: { ...old }, 1: { ...old }, 2: { ...old }
-         };
-      }
       this.bestLaps = data.bestLaps || {};
       this.bestLapTimes = data.bestLapTimes || {};
       this.unlockedImages = data.unlockedImages || ['axis-rush.jpg'];
-      this.leagueData = data.leagueData || { inProgress: false, trackIndex: 0, scores: {}, pilotId: 0, vehicleId: 0 };
+      this.pilotData = data.pilotData || {};
+      
+      // Migration: convert old global upgrades/leagueData to per-pilot (default to pilot 0)
+      if (data.upgrades && !this.pilotData[0]) {
+        this.pilotData[0] = this.getPilotData(0);
+        this.pilotData[0].upgrades = data.upgrades;
+        if (data.leagueData) this.pilotData[0].campaign = data.leagueData;
+      }
+
       if (data.settings) {
         if (data.settings.audio) Object.assign(this.settings.audio, data.settings.audio);
         if (data.settings.kb) Object.assign(this.settings.kb, data.settings.kb);
@@ -244,10 +241,10 @@ class Game {
       this.applySettings();
     } else {
       this.credits = 0;
-      this.upgrades = { 0: { speed: 0, handling: 0, armor: 0 }, 1: { speed: 0, handling: 0, armor: 0 }, 2: { speed: 0, handling: 0, armor: 0 } };
       this.bestLaps = {};
       this.bestLapTimes = {};
       this.unlockedImages = ['axis-rush.jpg'];
+      this.pilotData = {};
       this.applySettings();
     }
   }
@@ -255,13 +252,26 @@ class Game {
   saveData() {
     localStorage.setItem('racerSaveData', JSON.stringify({
       credits: this.credits,
-      upgrades: this.upgrades,
       bestLaps: this.bestLaps,
       bestLapTimes: this.bestLapTimes,
       settings: this.settings,
-      leagueData: this.leagueData,
+      pilotData: this.pilotData,
       unlockedImages: this.unlockedImages
     }));
+  }
+
+  getPilotData(pilotId) {
+    if (!this.pilotData[pilotId]) {
+      this.pilotData[pilotId] = {
+        campaign: { inProgress: false, trackIndex: 0, scores: {}, vehicleId: 0, difficulty: 1 },
+        upgrades: {
+          0: { speed: 0, handling: 0, armor: 0 },
+          1: { speed: 0, handling: 0, armor: 0 },
+          2: { speed: 0, handling: 0, armor: 0 }
+        }
+      };
+    }
+    return this.pilotData[pilotId];
   }
 
   unlockGalleryImage(src) {
@@ -567,20 +577,22 @@ class Game {
   }
 
   setupUI() {
-    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('char-select'); this.renderCharList(); });
-    document.getElementById('btn-league-continue').addEventListener('click', () => { this.continueLeague(); });
-    document.getElementById('btn-league').addEventListener('click', () => { 
-      if (this.leagueData.inProgress) {
-        this.showConfirm(
-          "START NEW LEAGUE?",
-          "You have a league in progress. Starting a new one will erase your current standings and track progress.",
-          () => {
-            this.gameMode = 'LEAGUE'; this.showScreen('char-select'); this.renderCharList(); 
-          }
-        );
-      } else {
-        this.gameMode = 'LEAGUE'; this.showScreen('char-select'); this.renderCharList(); 
+    // Request full screen on first interaction for mobile
+    const requestFS = () => {
+      if (this.isMobile && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => {
+          console.log("FS request failed:", e);
+        });
       }
+      window.removeEventListener('click', requestFS);
+      window.removeEventListener('touchstart', requestFS);
+    };
+    window.addEventListener('click', requestFS);
+    window.addEventListener('touchstart', requestFS);
+
+    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('char-select'); this.renderCharList(); });
+    document.getElementById('btn-campaign').addEventListener('click', () => { 
+      this.gameMode = 'CAMPAIGN'; this.showScreen('char-select'); this.renderCharList(); 
     });
     document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('char-select'); this.renderCharList(); });
     
@@ -588,7 +600,6 @@ class Game {
     document.getElementById('btn-char-intro-start').addEventListener('click', () => { this.showLeagueStandings(); });
     document.getElementById('btn-char-outro-finish').addEventListener('click', () => { this.showMenu(); });
 
-    document.getElementById('btn-shop').addEventListener('click', () => { this.shopReturnScreen = 'main-menu'; this.showScreen('upgrade-shop'); this.updateShopUI(); });
     document.getElementById('btn-gallery').addEventListener('click', () => { this.showScreen('gallery-menu'); this.renderGallery(); });
     document.getElementById('btn-gallery-back').addEventListener('click', () => { this.showMenu(); });
     document.getElementById('btn-settings').addEventListener('click', () => { this.showScreen('settings-menu'); this.renderSettings(); });
@@ -645,11 +656,18 @@ class Game {
 
     document.getElementById('btn-how').addEventListener('click', () => { this.showScreen('how-to-play'); });
     document.getElementById('btn-how-back').addEventListener('click', () => { this.showMenu(); });
-    document.getElementById('btn-char-next').addEventListener('click', () => { this.showScreen('car-select'); });
+    document.getElementById('btn-char-next').addEventListener('click', () => { 
+      const pilotData = this.getPilotData(this.playerPilotId);
+      if (this.gameMode === 'CAMPAIGN' && pilotData.campaign.inProgress) {
+        this.continueCampaign();
+      } else {
+        this.showScreen('car-select'); 
+      }
+    });
     document.getElementById('btn-char-back').addEventListener('click', () => { this.showMenu(); });
     const carBtns = document.querySelectorAll('#vehicle-select button');
     carBtns.forEach(btn => { btn.addEventListener('click', () => { carBtns.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.vehicleType = parseInt(btn.dataset.val); this.updateCarPreview(this.vehicleType); }); });
-    document.getElementById('btn-car-next').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') { this.showScreen('track-select'); this.renderMapList(); } else { this.startLeague(); } });
+    document.getElementById('btn-car-next').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') { this.showScreen('track-select'); this.renderMapList(); } else { this.startCampaign(); } });
     document.getElementById('btn-car-back').addEventListener('click', () => { this.showScreen('char-select'); this.renderCharList(); });
     document.getElementById('btn-track-start').addEventListener('click', () => { this.startRace(); });
     document.getElementById('btn-track-back').addEventListener('click', () => { this.showScreen('car-select'); });
@@ -657,9 +675,9 @@ class Game {
     diffBtns.forEach(btn => { btn.addEventListener('click', () => { diffBtns.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.difficulty = parseInt(btn.dataset.val); }); });
     document.getElementById('restart-btn').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') this.showMenu(); else this.showLeagueStandings(); });
     document.getElementById('btn-league-next').addEventListener('click', () => { 
-      if (this.leagueTrackIndex < MAPS.length) this.startRace(); 
+      if (this.campaignTrackIndex < MAPS.length) this.startRace(); 
       else {
-        const sortedIds = Object.keys(this.leagueScores).sort((a,b) => this.leagueScores[b] - this.leagueScores[a]);
+        const sortedIds = Object.keys(this.campaignScores).sort((a,b) => this.campaignScores[b] - this.campaignScores[a]);
         if (parseInt(sortedIds[0]) === this.playerPilotId) {
           this.showCharOutro();
         } else {
@@ -689,6 +707,36 @@ class Game {
     });
   }
 
+  startCampaign() {
+    this.gameMode = 'CAMPAIGN';
+    this.campaignTrackIndex = 0; 
+    this.campaignScores = {}; 
+    PILOTS.forEach(p => this.campaignScores[p.id] = 0);
+    
+    const pilotData = this.getPilotData(this.playerPilotId);
+    pilotData.campaign = {
+      inProgress: true,
+      trackIndex: 0,
+      scores: this.campaignScores,
+      vehicleId: this.vehicleType,
+      difficulty: this.difficulty
+    };
+    this.saveData();
+    this.loadStoryImage('league-intro-img', 'league-intro-img-container', './images/axis-rush.jpg');
+    this.unlockGalleryImage('./images/axis-rush.jpg');
+    this.showScreen('league-intro');
+  }
+
+  continueCampaign() {
+    this.gameMode = 'CAMPAIGN';
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const camp = pilotData.campaign;
+    this.campaignTrackIndex = camp.trackIndex;
+    this.campaignScores = camp.scores;
+    this.vehicleType = camp.vehicleId;
+    this.difficulty = camp.difficulty || 1;
+    this.showLeagueStandings();
+  }
 
   togglePause() {
     if (this.state === 'RACING') {
@@ -711,12 +759,47 @@ class Game {
       btn.innerHTML = `<img src="${p.portrait}" class="char-list-img"><span>${p.name}</span>`;
       
       const updateInfo = () => {
+        const pilotData = this.getPilotData(p.id);
+        const camp = pilotData.campaign;
+        let statusHtml = "";
+        if (this.gameMode === 'CAMPAIGN') {
+          const nextTrack = camp.inProgress ? (MAPS[camp.trackIndex]?.name || "COMPLETE") : "NOT STARTED";
+          statusHtml = `
+            <div style="border: 1px solid #f0f; padding: 10px; margin-top: 10px;">
+              <div style="color:#f0f; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">CAMPAIGN STATUS</div>
+              <div style="font-size:0.9rem;">PROGRESS: ${camp.inProgress ? `${camp.trackIndex+1}/${MAPS.length}` : '0/10'}</div>
+              <div style="font-size:0.9rem;">NEXT: ${nextTrack}</div>
+            </div>
+          `;
+          
+          // Update button text if in campaign mode
+          const nextBtn = document.getElementById('btn-char-next');
+          if (nextBtn) {
+            nextBtn.innerText = camp.inProgress ? "CONTINUE CAMPAIGN" : "START NEW CAMPAIGN";
+          }
+        }
+
+        // Show upgrades summary
+        const upg0 = pilotData.upgrades[0], upg1 = pilotData.upgrades[1], upg2 = pilotData.upgrades[2];
+        const upgHtml = `
+          <div style="border: 1px solid #0ff; padding: 10px; margin-top: 10px;">
+            <div style="color:#0ff; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">INSTALLED UPGRADES</div>
+            <div style="font-size:0.7rem; color:#aaa; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
+              <div>L: S${upg0.speed} H${upg0.handling} A${upg0.armor}</div>
+              <div>B: S${upg1.speed} H${upg1.handling} A${upg1.armor}</div>
+              <div>H: S${upg2.speed} H${upg2.handling} A${upg2.armor}</div>
+            </div>
+          </div>
+        `;
+
         info.innerHTML = `<div style="color:${p.color.getStyle()}; font-weight:bold; margin-bottom:5px;">${p.faction}</div>
                           <div style="font-size:0.9rem; margin-bottom:10px; line-height:1.4; text-align:left; max-height:150px; overflow-y:auto;">${p.bg}</div>
-                          <div style="font-style:italic; color:#aaa; font-size:0.8rem;">GOAL: ${p.goal}</div>`;
+                          <div style="font-style:italic; color:#aaa; font-size:0.8rem; margin-bottom:10px;">GOAL: ${p.goal}</div>
+                          ${statusHtml}
+                          ${upgHtml}`;
         picContainer.innerHTML = `<img src="${p.portrait}">`;
       };
-      if (idx === this.playerPilotId) { btn.classList.add('selected'); updateInfo(); }
+      if (p.id === this.playerPilotId) { btn.classList.add('selected'); updateInfo(); }
       btn.addEventListener('click', () => { document.querySelectorAll('#char-list button').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.playerPilotId = p.id; updateInfo(); });
       list.appendChild(btn);
     });
@@ -753,9 +836,10 @@ class Game {
   }
 
   updateCarPreview(type) {
-    this.clearCarPreview(); 
+    this.clearCarPreview();
     const info = document.getElementById('car-info');
-    const upg = this.upgrades[type];
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const upg = pilotData.upgrades[type];
     const baseStats = VEHICLE_BASE_STATS[type];
     const currentStats = {
       speed: baseStats.speed + (upg.speed * 25),
@@ -771,8 +855,7 @@ class Game {
 
     this.previewVehicle = new Vehicle(this.scene, type, true, PILOTS[this.playerPilotId], upg);
     this.previewVehicle.rankLabel.visible = false; this.previewVehicle.numberLabel.visible = false; this.previewVehicle.minimapMarker.visible = false; this.previewVehicle.trailMesh.visible = false; this.previewVehicle.slipstreamMesh.visible = false; this.previewVehicle.blurLines.visible = false;
-    this.previewVehicle.mesh.traverse(obj => obj.layers.set(1)); this.previewVehicle.mesh.position.set(0, 0, 0); this.previewVehicle.mesh.scale.set(5, 5, 5);
-    
+    this.previewVehicle.mesh.traverse(obj => obj.layers.set(1)); this.previewVehicle.mesh.position.set(0, 0, 0); this.previewVehicle.mesh.scale.set(5, 5, 5);    
     // Dynamic showroom lighting
     this.previewLights = new THREE.Group();
     const amb = new THREE.AmbientLight(0xffffff, 1.5); amb.layers.enable(1);
@@ -912,13 +995,6 @@ class Game {
   
   showMenu() {
     this.showScreen('main-menu'); audioEngine.setMode('menu');
-    const btnContinue = document.getElementById('btn-league-continue');
-    if (this.leagueData && this.leagueData.inProgress) {
-      btnContinue.style.display = 'block';
-      btnContinue.innerText = `CONTINUE LEAGUE (${this.leagueData.trackIndex + 1}/${MAPS.length})`;
-    } else {
-      btnContinue.style.display = 'none';
-    }
 
     if (this.state !== 'MENU' || !this.track) {
       this.state = 'MENU';
@@ -949,21 +1025,22 @@ class Game {
     }
   }
 
-  startLeague() {
-    this.gameMode = 'LEAGUE';
-    this.leagueTrackIndex = 0; this.leagueScores = {}; PILOTS.forEach(p => this.leagueScores[p.id] = 0);
+  startCampaign() {
+    this.gameMode = 'CAMPAIGN';
+    this.campaignTrackIndex = 0; this.campaignScores = {}; PILOTS.forEach(p => this.campaignScores[p.id] = 0);
     this.difficulty = 1;
-    this.leagueData = {
+    const pilotData = this.getPilotData(this.playerPilotId);
+    pilotData.campaign = {
       inProgress: true,
       trackIndex: 0,
-      scores: this.leagueScores,
+      scores: this.campaignScores,
       pilotId: this.playerPilotId,
       vehicleId: this.vehicleType,
       difficulty: this.difficulty
     };
     this.saveData();
-    this.loadStoryImage('league-intro-img', 'league-intro-img-container', 'images/axis-rush.jpg');
-    this.unlockGalleryImage('images/axis-rush.jpg');
+    this.loadStoryImage('league-intro-img', 'league-intro-img-container', './images/axis-rush.jpg');
+    this.unlockGalleryImage('./images/axis-rush.jpg');
     this.showScreen('league-intro');
   }
 
@@ -976,8 +1053,8 @@ class Game {
     const pic = document.getElementById('char-intro-pic'); pic.innerHTML = `<img src="${pilot.portrait}">`;
     
     const imgName = pilot.name.toLowerCase().replace(/ /g, '-');
-    this.loadStoryImage('char-intro-img', 'char-intro-img-container', `images/${imgName}-intro.jpg`);
-    this.unlockGalleryImage(`images/${imgName}-intro.jpg`);
+    this.loadStoryImage('char-intro-img', 'char-intro-img-container', `./images/${imgName}-intro.jpg`);
+    this.unlockGalleryImage(`./images/${imgName}-intro.jpg`);
     
     this.showScreen('char-intro');
   }
@@ -989,43 +1066,45 @@ class Game {
     const pic = document.getElementById('char-outro-pic'); pic.innerHTML = `<img src="${pilot.portrait}">`;
     
     const imgName = pilot.name.toLowerCase().replace(/ /g, '-');
-    this.loadStoryImage('char-outro-img', 'char-outro-img-container', `images/${imgName}-outro.jpg`);
-    this.unlockGalleryImage(`images/${imgName}-outro.jpg`);
+    this.loadStoryImage('char-outro-img', 'char-outro-img-container', `./images/${imgName}-outro.jpg`);
+    this.unlockGalleryImage(`./images/${imgName}-outro.jpg`);
 
     this.showScreen('char-outro');
   }
 
-  continueLeague() {
-    this.gameMode = 'LEAGUE';
-    this.leagueTrackIndex = this.leagueData.trackIndex;
-    this.leagueScores = this.leagueData.scores;
-    this.playerPilotId = this.leagueData.pilotId;
-    this.vehicleType = this.leagueData.vehicleId;
-    this.difficulty = this.leagueData.difficulty || 1;
+  continueCampaign() {
+    this.gameMode = 'CAMPAIGN';
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const camp = pilotData.campaign;
+    this.campaignTrackIndex = camp.trackIndex;
+    this.campaignScores = camp.scores;
+    this.vehicleType = camp.vehicleId;
+    this.difficulty = camp.difficulty || 1;
     this.showLeagueStandings();
   }
 
   showLeagueStandings() {
     this.showScreen('league-standings'); this.state = 'STANDINGS';
     const title = document.getElementById('league-title');
-    if (this.leagueTrackIndex >= MAPS.length) { 
+    if (this.campaignTrackIndex >= MAPS.length) { 
       title.innerText = "CHAMPIONSHIP RESULTS"; 
       document.getElementById('btn-league-next').innerText = "FINISH"; 
-      this.leagueData.inProgress = false;
+      const pilotData = this.getPilotData(this.playerPilotId);
+      pilotData.campaign.inProgress = false;
       this.saveData();
     }
-    else { title.innerText = `NEXT: ${MAPS[this.leagueTrackIndex].name} (${this.leagueTrackIndex + 1}/${MAPS.length})`; document.getElementById('btn-league-next').innerText = "START RACE"; }
+    else { title.innerText = `NEXT: ${MAPS[this.campaignTrackIndex].name} (${this.campaignTrackIndex + 1}/${MAPS.length})`; document.getElementById('btn-league-next').innerText = "START RACE"; }
     const list = document.getElementById('standings-list'); list.innerHTML = '';
-    const sortedIds = Object.keys(this.leagueScores).sort((a,b) => this.leagueScores[b] - this.leagueScores[a]);
+    const sortedIds = Object.keys(this.campaignScores).sort((a,b) => this.campaignScores[b] - this.campaignScores[a]);
     sortedIds.forEach((idStr, idx) => {
       const id = parseInt(idStr), row = document.createElement('div');
       row.className = 'standings-row'; if (id === this.playerPilotId) row.classList.add('player');
-      row.innerText = `${idx+1}. ${PILOTS[id].name} - ${this.leagueScores[id]} PTS`; list.appendChild(row);
+      row.innerText = `${idx+1}. ${PILOTS[id].name} - ${this.campaignScores[id]} PTS`; list.appendChild(row);
     });
   }
   
   startRace() {
-    if (this.gameMode === 'LEAGUE') this.mapType = this.leagueTrackIndex;
+    if (this.gameMode === 'CAMPAIGN') this.mapType = this.campaignTrackIndex;
     this.startCamPos.copy(this.camera.position); this.state = 'STARTING'; this.countdownTimer = this.countdownTotal; this.showScreen('hud');
     const hudPic = document.getElementById('hud-pilot-pic'); hudPic.innerHTML = `<img src="${PILOTS[this.playerPilotId].portrait}">`;
     while(this.scene.children.length > 0) this.scene.remove(this.scene.children[0]); 
@@ -1038,7 +1117,8 @@ class Game {
     this.scene.add(sunLight);
     this.track = new Track(this.scene, this.mapType);
     this.weaponSystem = new WeaponSystem(this.scene, this.track);
-    this.player = new Vehicle(this.scene, this.vehicleType, true, PILOTS[this.playerPilotId], this.upgrades[this.vehicleType]);
+    const pilotData = this.getPilotData(this.playerPilotId);
+    this.player = new Vehicle(this.scene, this.vehicleType, true, PILOTS[this.playerPilotId], pilotData.upgrades[this.vehicleType]);
     this.player.minimapMarker.layers.set(1);
     this.player._lapStartTime = performance.now(); // Will be reset at GO!
     this.player._lastRecordedLap = 1;
@@ -1245,7 +1325,7 @@ class Game {
   
   finishRace(rankedRacers) {
     this.state = 'FINISHED'; const points = [10, 8, 6, 5, 4, 3, 2, 1, 0]; let playerRank = 1;
-    rankedRacers.forEach((racer, idx) => { this.leagueScores[racer.pilot.id] += points[idx] || 0; if (racer.isPlayer) playerRank = idx + 1; });
+    rankedRacers.forEach((racer, idx) => { this.campaignScores[racer.pilot.id] += points[idx] || 0; if (racer.isPlayer) playerRank = idx + 1; });
     
     let earnedCredits = 0;
     if (this.gameMode !== 'TIME_TRIAL') {
@@ -1262,10 +1342,11 @@ class Game {
          this.bestLaps[this.mapType] = { time: totalTime, path: downsampledPath };
        }
     }
-    if (this.gameMode === 'LEAGUE') {
-      this.leagueTrackIndex++;
-      this.leagueData.trackIndex = this.leagueTrackIndex;
-      this.leagueData.scores = this.leagueScores;
+    if (this.gameMode === 'CAMPAIGN') {
+      this.campaignTrackIndex++;
+      const pilotData = this.getPilotData(this.playerPilotId);
+      pilotData.campaign.trackIndex = this.campaignTrackIndex;
+      pilotData.campaign.scores = this.campaignScores;
     }
     this.saveData();
 
