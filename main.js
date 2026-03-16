@@ -198,7 +198,33 @@ class Game {
       this.loadData();
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (this.isMobile) document.body.classList.add('is-mobile');
-    
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('SW registered:', reg);
+        }).catch(err => {
+          console.log('SW failed:', err);
+        });
+      });
+    }
+
+    // Handle PWA installation
+    this.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      this.deferredPrompt = e;
+      const installBtn = document.getElementById('btn-install-pwa');
+      if (installBtn) installBtn.style.display = 'block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      this.deferredPrompt = null;
+      const installBtn = document.getElementById('btn-install-pwa');
+      if (installBtn) installBtn.style.display = 'none';
+    });
+
     this.setupUI(); this.setupInputs(); this.setupTouchControls();
     window.addEventListener('resize', () => this.onResize());
     
@@ -610,6 +636,20 @@ class Game {
     document.getElementById('btn-gallery-back').addEventListener('click', () => { this.showMenu(); });
     document.getElementById('btn-settings').addEventListener('click', () => { this.showScreen('settings-menu'); this.renderSettings(); });
     document.getElementById('btn-settings-back').addEventListener('click', () => { this.showMenu(); });
+    
+    const installBtn = document.getElementById('btn-install-pwa');
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (this.deferredPrompt) {
+          this.deferredPrompt.prompt();
+          const { outcome } = await this.deferredPrompt.userChoice;
+          console.log(`User response to the install prompt: ${outcome}`);
+          this.deferredPrompt = null;
+          installBtn.style.display = 'none';
+        }
+      });
+    }
+
     document.getElementById('btn-reset-game').addEventListener('click', () => { this.resetGame(); });
     
     // Settings Tabs
