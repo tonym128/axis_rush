@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
-  // Use relative paths for assets so they work on GitHub Pages subfolders
   base: './',
   build: {
-    // Some users prefer the 'docs' folder for GitHub Pages hosting
     outDir: 'docs',
+  },
+  resolve: {
+    alias: {
+      'mqtt': 'mqtt/dist/mqtt.min.js'
+    }
   }
 });

@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import './style.css';
 import { textureManager } from './textures.js';
 import { audioEngine } from './audio.js';
 import { Track, MAPS } from './track.js';
 import { Vehicle, AI } from './vehicle.js';
 import { WeaponSystem } from './weapons.js';
+import { NetworkManager } from './network.js';
 import { 
   EffectComposer, 
   RenderPass, 
@@ -183,6 +185,7 @@ class Game {
     this.ghostDiffTimer = 0;
     this.currentThrottle = 0;
     this.focusedElement = null;
+    this.network = new NetworkManager(this);
     this.settings = {
       audio: { master: 0.5, music: 0.1, sfx: 0.8 },
       kb: {
@@ -485,7 +488,8 @@ class Game {
   updateShopUI() {
     document.getElementById('shop-credits').innerText = this.credits;
     document.getElementById('shop-vehicle-name').innerText = VEHICLES[this.vehicleType].name;
-    const upg = this.upgrades[this.vehicleType];
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const upg = pilotData.upgrades[this.vehicleType];
     const baseStats = VEHICLE_BASE_STATS[this.vehicleType];
     
     // Show stats with upgrades
@@ -626,7 +630,46 @@ class Game {
     document.getElementById('btn-campaign').addEventListener('click', () => { 
       this.gameMode = 'CAMPAIGN'; this.showScreen('char-select'); this.renderCharList(); 
     });
+    document.getElementById('btn-multiplayer').addEventListener('click', () => { 
+      this.gameMode = 'MULTIPLAYER'; this.showScreen('char-select'); this.renderCharList(); 
+    });
     document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('char-select'); this.renderCharList(); });
+
+    // Multiplayer Menu Buttons
+    document.getElementById('btn-mp-back').addEventListener('click', () => { this.showMenu(); });
+    document.getElementById('btn-host-setup').addEventListener('click', () => { this.showScreen('host-setup'); });
+    document.getElementById('btn-host-back').addEventListener('click', () => { this.showScreen('multiplayer-menu'); });
+    document.getElementById('btn-host-start').addEventListener('click', () => { 
+      const mode = document.getElementById('host-mode').value;
+      const track = parseInt(document.getElementById('host-track').value);
+      const useAI = document.getElementById('host-ai').checked;
+      this.network.startHost(PILOTS[this.playerPilotId].name, this.playerPilotId, this.vehicleType, {
+        mode, mapIndex: track, difficulty: 1, useAI
+      });
+      this.showScreen('mp-lobby');
+    });
+
+    document.getElementById('btn-browse-games').addEventListener('click', () => {
+      this.showScreen('lobby-browser');
+      this.network.initLobbyBrowser((hosts) => this.renderLobbyBrowser(hosts));
+    });
+    document.getElementById('btn-browser-back').addEventListener('click', () => {
+      this.network.closeLobbyBrowser();
+      this.showScreen('multiplayer-menu');
+    });
+    document.getElementById('btn-browser-refresh').addEventListener('click', () => {
+      this.network.closeLobbyBrowser();
+      this.network.initLobbyBrowser((hosts) => this.renderLobbyBrowser(hosts));
+    });
+
+    document.getElementById('btn-lobby-leave').addEventListener('click', () => {
+      if (this.network.isHost) this.network.stopHost();
+      else if (this.network.hostConnection) this.network.hostConnection.close();
+      this.showMenu();
+    });
+    document.getElementById('btn-lobby-start').addEventListener('click', () => {
+      this.network.startGameHost();
+    });
     
     document.getElementById('btn-league-intro-next').addEventListener('click', () => { this.showCharIntro(); });
     document.getElementById('btn-char-intro-start').addEventListener('click', () => { this.showLeagueStandings(); });
@@ -713,7 +756,15 @@ class Game {
     document.getElementById('btn-char-back').addEventListener('click', () => { this.showMenu(); });
     const carBtns = document.querySelectorAll('#vehicle-select button');
     carBtns.forEach(btn => { btn.addEventListener('click', () => { carBtns.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.vehicleType = parseInt(btn.dataset.val); this.updateCarPreview(this.vehicleType); }); });
-    document.getElementById('btn-car-next').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') { this.showScreen('track-select'); this.renderMapList(); } else { this.startCampaign(); } });
+    document.getElementById('btn-car-next').addEventListener('click', () => { 
+      if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') { 
+        this.showScreen('track-select'); this.renderMapList(); 
+      } else if (this.gameMode === 'CAMPAIGN') { 
+        this.startCampaign(); 
+      } else if (this.gameMode === 'MULTIPLAYER') {
+        this.showScreen('multiplayer-menu');
+      }
+    });
     document.getElementById('btn-car-back').addEventListener('click', () => { this.showScreen('char-select'); this.renderCharList(); });
     document.getElementById('btn-track-start').addEventListener('click', () => { this.startRace(); });
     document.getElementById('btn-track-back').addEventListener('click', () => { this.showScreen('car-select'); });
@@ -1364,8 +1415,8 @@ class Game {
       </div>`;
     }
 
-    let raceOver = false; if (this.player.lap > 3) raceOver = true;
-    for (const ai of this.ais) if (ai.lap > 3) raceOver = true;
+    let raceOver = false;
+    if (allRacers.some(r => r.lap > 3)) raceOver = true;
     if (raceOver && this.state !== 'FINISHED') this.finishRace(allRacers);
   }
   
@@ -1447,7 +1498,14 @@ class Game {
     if (this.state === 'RACING' || this.state === 'FINISHED' || this.state === 'STARTING') {
       if (this.state === 'RACING' || this.state === 'STARTING') this.pollGamepads();
       this.track.update(dt, this.camera);
-      const allRacers = this.player ? [this.player, ...this.ais] : [];
+      
+      let allRacers = [];
+      if (this.gameMode === 'MULTIPLAYER' && this.mpPlayers) {
+        allRacers = Object.values(this.mpPlayers).concat(this.ais);
+      } else {
+        allRacers = this.player ? [this.player, ...this.ais] : [];
+      }
+      
       const spawnFn = (type, owner) => this.weaponSystem.spawn(type, owner);
 
       if (this.isMobile && this.state === 'RACING') this.inputs.accelerate = true;
@@ -1456,22 +1514,46 @@ class Game {
       else this.currentThrottle = Math.max(0.0, this.currentThrottle - dt * 2.0);
 
       if (this.state === 'RACING') {
-        this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
-        for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
-        
-        this.updateRanks(allRacers);
-
-        // Lap recording
-        const now = performance.now();
-        [this.player, ...this.ais].forEach(r => {
-          if (r.lap > r._lastRecordedLap) {
-            const time = now - r._lapStartTime;
-            r.lapTimes.push(time);
-            r._lapStartTime = now;
-            r._lastRecordedLap = r.lap;
-            if (r.isPlayer) this.onPlayerLapComplete(time, r.lap - 1);
+        if (this.gameMode === 'MULTIPLAYER' && !this.network.isHost) {
+          this.network.sendInput(this.inputs);
+        } else {
+          this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
+          
+          if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
+            for (let id in this.remoteInputs) {
+              if (this.mpPlayers[id] && id !== this.network.myId) {
+                this.mpPlayers[id].update(dt, this.track, this.remoteInputs[id], allRacers, spawnFn);
+              }
+            }
           }
-        });
+
+          for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
+          this.updateRanks(allRacers);
+
+          // Lap recording
+          const now = performance.now();
+          allRacers.forEach(r => {
+            if (r.lap > r._lastRecordedLap) {
+              const time = now - r._lapStartTime;
+              r.lapTimes.push(time);
+              r._lapStartTime = now;
+              r._lastRecordedLap = r.lap;
+              if (r === this.player) this.onPlayerLapComplete(time, r.lap - 1);
+            }
+          });
+
+          if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
+            const state = { mp: {}, ai: [] };
+            for (let id in this.mpPlayers) {
+              const v = this.mpPlayers[id];
+              state.mp[id] = { t: v.t, a: v.angle, s: v.speed, sf: v.sideFactor, r: v.rank, l: v.lap };
+            }
+            this.ais.forEach(ai => {
+              state.ai.push({ p: ai.pilot.id, t: ai.t, a: ai.angle, s: ai.speed, sf: ai.sideFactor, r: ai.rank, l: ai.lap });
+            });
+            this.network.broadcastGameState(state);
+          }
+        }
 
         this.weaponSystem.update(dt, allRacers);
         if (this.player.cameraShakeRequest > 0) { this.cameraShakeIntensity = Math.max(this.cameraShakeIntensity, this.player.cameraShakeRequest); this.player.cameraShakeRequest = 0; }
@@ -1616,6 +1698,128 @@ class Game {
         const time = performance.now() * 0.0005;
         this.camera.position.set(Math.sin(time) * 100, 50, Math.cos(time) * 100); this.camera.lookAt(0,0,0);
       }
+    }
+  }
+
+  // --- MULTIPLAYER ---
+  renderLobbyBrowser(hosts) {
+    const list = document.getElementById('lobby-list');
+    list.innerHTML = '';
+    const hostKeys = Object.keys(hosts);
+    if (hostKeys.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:#aaa;">NO HOSTS FOUND</div>';
+      return;
+    }
+    hostKeys.forEach(id => {
+      const h = hosts[id];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#111; padding:10px; border:1px solid #0ff;';
+      row.innerHTML = `
+        <div>
+          <div style="color:#0ff; font-weight:bold;">${h.name}</div>
+          <div style="font-size:0.8rem; color:#aaa;">MODE: ${h.mode} | PLAYERS: ${h.players}/${h.maxPlayers}</div>
+        </div>
+        <button class="main-btn" style="padding: 5px 15px; font-size:1rem;">JOIN</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => {
+        document.getElementById('lobby-list').innerHTML = '<div style="text-align:center; color:#ff0;">JOINING...</div>';
+        this.network.joinHost(h.id, PILOTS[this.playerPilotId].name, this.playerPilotId, this.vehicleType);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  updateLobbyUI() {
+    this.showScreen('mp-lobby');
+    const list = document.getElementById('lobby-players-list');
+    list.innerHTML = '';
+    Object.values(this.network.players).forEach(p => {
+      list.innerHTML += `<div style="padding:10px; background:#111; border:1px solid #0f0; color:#0f0;">${p.name} (Pilot: ${PILOTS[p.pilotId].name}) ${p.isHost ? '[HOST]' : ''}</div>`;
+    });
+    
+    document.getElementById('lobby-config-info').innerHTML = `
+      <div style="color:#0ff;">MODE: ${this.network.hostConfig.mode}</div>
+      <div style="color:#0ff;">TRACK: ${MAPS[this.network.hostConfig.mapIndex].name}</div>
+      <div style="color:#0ff;">AI RACERS: ${this.network.hostConfig.useAI ? 'ON' : 'OFF'}</div>
+    `;
+
+    const startBtn = document.getElementById('btn-lobby-start');
+    if (this.network.isHost) {
+      startBtn.style.display = 'block';
+    } else {
+      startBtn.style.display = 'none';
+    }
+  }
+
+  startMultiplayerRace(players, config) {
+    this.gameMode = 'MULTIPLAYER';
+    this.mapType = config.mapIndex;
+    this.startCamPos.copy(this.camera.position); this.state = 'STARTING'; this.countdownTimer = this.countdownTotal; this.showScreen('hud');
+    const hudPic = document.getElementById('hud-pilot-pic'); hudPic.innerHTML = `<img src="${PILOTS[this.playerPilotId].portrait}">`;
+    while(this.scene.children.length > 0) this.scene.remove(this.scene.children[0]); 
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); ambientLight.layers.enable(1); this.scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1); sunLight.position.set(100, 100, 50); sunLight.layers.enable(1); this.scene.add(sunLight);
+    this.track = new Track(this.scene, this.mapType);
+    this.weaponSystem = new WeaponSystem(this.scene, this.track);
+    
+    this.remoteInputs = {};
+    this.mpPlayers = {}; 
+    this.ais = [];
+
+    for (let id in players) {
+      const p = players[id];
+      const isLocal = id === this.network.myId;
+      const upg = { speed: 0, handling: 0, armor: 0 }; 
+      const v = new Vehicle(this.scene, p.vehicleId, isLocal, PILOTS[p.pilotId], upg);
+      v.minimapMarker.layers.set(1);
+      if (isLocal) {
+        this.player = v;
+      } else {
+        this.remoteInputs[id] = { accelerate: false, brake: false, left: false, right: false, fire: false, boost: false };
+      }
+      this.mpPlayers[id] = v;
+    }
+
+    if (config.useAI && this.network.isHost) {
+      PILOTS.forEach(p => { 
+        const taken = Object.values(players).some(pl => pl.pilotId === p.id);
+        if (!taken) {
+          const ai = new AI(this.scene, config.difficulty, p);
+          ai.minimapMarker.layers.set(1);
+          this.ais.push(ai);
+        }
+      });
+    }
+
+    const skyGeo = new THREE.SphereGeometry(5000, 32, 32);
+    const skyMat = textureManager.getBasicMaterial(MAPS[this.mapType].bgWords, { side: THREE.BackSide, fog: false });
+    const sky = new THREE.Mesh(skyGeo, skyMat); this.scene.add(sky);
+    audioEngine.setMode('race', this.mapType, config.difficulty); audioEngine.start(); this.runCountdown();
+  }
+
+  applyNetworkState(state) {
+    if (this.state !== 'RACING' && this.state !== 'STARTING') return;
+    
+    if (state.mp) {
+      for (let id in state.mp) {
+        if (id !== this.network.myId && this.mpPlayers[id]) {
+          const s = state.mp[id];
+          const v = this.mpPlayers[id];
+          v.t = s.t; v.angle = s.a; v.speed = s.s; v.sideFactor = s.sf; v.rank = s.r; v.lap = s.l;
+          v.update(0, this.track, {accelerate: false}, [], () => {}); 
+        }
+      }
+    }
+    if (state.ai) {
+      state.ai.forEach((s, i) => {
+        if (!this.ais[i]) {
+          this.ais[i] = new AI(this.scene, 1, PILOTS[s.p]); 
+          this.ais[i].minimapMarker.layers.set(1);
+        }
+        const ai = this.ais[i];
+        ai.t = s.t; ai.angle = s.a; ai.speed = s.s; ai.sideFactor = s.sf; ai.rank = s.r; ai.lap = s.l;
+        ai.update(0, this.track, null, [], () => {}); 
+      });
     }
   }
 

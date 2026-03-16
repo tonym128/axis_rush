@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AXIS RUSH 2026</title>
-  <script type="module" crossorigin src="./assets/index-DPWwwoqQ.js"></script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#00ffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="./favicon.svg">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script type="module" crossorigin src="./assets/index-DtoE0l47.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-ByC0jJw2.css">
 </head>
 <body>
@@ -21,11 +28,87 @@
         <h1>AXIS RUSH</h1>
         <button id="btn-single" class="main-btn">SINGLE RACE</button>
         <button id="btn-campaign" class="main-btn">CAMPAIGN MODE</button>
+        <button id="btn-multiplayer" class="main-btn" style="color:#0f0; border-color:#0f0;">MULTIPLAYER</button>
         <button id="btn-fullscreen" class="main-btn" style="display:none; color:#ff0; border-color:#ff0;">GO FULLSCREEN</button>
         <button id="btn-time-trial" class="main-btn">TIME TRIAL</button>
         <button id="btn-gallery" class="main-btn">IMAGE GALLERY</button>
         <button id="btn-settings" class="main-btn">SETTINGS</button>
         <button id="btn-how" class="main-btn">HOW TO PLAY</button>
+      </div>
+
+      <!-- Multiplayer Menu -->
+      <div id="multiplayer-menu" class="screen">
+        <h2>MULTIPLAYER</h2>
+        <div class="button-group-vertical" style="width: 400px;">
+          <button id="btn-host-setup" class="main-btn">HOST GAME</button>
+          <button id="btn-browse-games" class="main-btn">BROWSE GAMES</button>
+          <button id="btn-mp-back" class="main-btn" style="color:#aaa; border-color:#555;">BACK TO MENU</button>
+        </div>
+      </div>
+
+      <!-- Host Setup Menu -->
+      <div id="host-setup" class="screen">
+        <h2>HOST SETUP</h2>
+        <div class="settings-layout" style="width: 500px;">
+          <div class="setting-row">
+            <span>GAME MODE</span>
+            <select id="host-mode" style="background:#000; color:#0ff; padding:5px; border:1px solid #0ff; font-family:inherit;">
+              <option value="SINGLE">SINGLE RACE</option>
+              <option value="CAMPAIGN">CAMPAIGN</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>TRACK</span>
+            <select id="host-track" style="background:#000; color:#0ff; padding:5px; border:1px solid #0ff; font-family:inherit;">
+              <option value="0">NEON TUBE</option>
+              <option value="1">CYBER SPIRAL</option>
+              <option value="2">VOID CHASM</option>
+              <option value="3">STEEL CANYON</option>
+              <option value="4">PLASMA LOOP</option>
+              <option value="5">NEBULA DRIFT</option>
+              <option value="6">CHROMATIC KNOT</option>
+              <option value="7">GRAVITY WELL</option>
+              <option value="8">FRACTAL RIDGE</option>
+              <option value="9">QUANTUM KNOT</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>AI RACERS</span>
+            <input type="checkbox" id="host-ai" checked style="width:20px; height:20px;">
+          </div>
+          <div class="button-group" style="margin-top: 20px;">
+            <button id="btn-host-back">BACK</button>
+            <button id="btn-host-start" class="selected">CREATE LOBBY</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lobby Browser -->
+      <div id="lobby-browser" class="screen">
+        <h2>JOIN GAME</h2>
+        <div id="lobby-list" class="list-container" style="display:flex; flex-direction:column; gap:10px; width:600px; height:400px; overflow-y:auto; background:#00ffff0d; border:1px solid #0ff; padding:15px;">
+          <div style="text-align:center; color:#aaa;">SEARCHING FOR HOSTS...</div>
+        </div>
+        <div class="button-group" style="margin-top: 20px;">
+          <button id="btn-browser-back">BACK</button>
+          <button id="btn-browser-refresh" class="selected">REFRESH</button>
+        </div>
+      </div>
+
+      <!-- Multiplayer Lobby -->
+      <div id="mp-lobby" class="screen">
+        <h2>LOBBY WAITING ROOM</h2>
+        <div style="display:flex; gap: 30px; width: 800px;">
+          <div style="flex: 1; background:#00ffff0d; border:1px solid #0ff; padding:15px;">
+            <h3 style="color:#0ff; margin-bottom:10px;">PLAYERS</h3>
+            <div id="lobby-players-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+          <div style="flex: 1; display:flex; flex-direction:column; gap:20px;">
+            <div id="lobby-config-info" class="info-box" style="margin:0;"></div>
+            <button id="btn-lobby-start" class="main-btn selected" style="display:none;">START RACE</button>
+            <button id="btn-lobby-leave" class="main-btn" style="color:#f00; border-color:#f00;">LEAVE LOBBY</button>
+          </div>
+        </div>
       </div>
 
       <!-- Gallery -->
@@ -59,7 +142,7 @@
                <span>SFX VOLUME</span>
                <input type="range" id="vol-sfx" min="0" max="1" step="0.1">
              </div>
-          </div>
+             <button id="btn-install-pwa" class="main-btn" style="display:none; margin-top: 20px; width: 100%;">INSTALL GAME (PWA)</button>          </div>
 
           <div id="kb-settings" class="settings-content">
              <div id="kb-mapping-list" class="mapping-list"></div>
