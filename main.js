@@ -515,7 +515,8 @@ class Game {
   }
 
   buyUpgrade(stat) {
-    const upg = this.upgrades[this.vehicleType];
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const upg = pilotData.upgrades[this.vehicleType];
     const cost = (upg[stat] + 1) * 100;
     if (upg[stat] < 5 && this.credits >= cost) {
       this.credits -= cost;
