@@ -19,6 +19,8 @@ export class AudioEngine {
     this.snarePattern =  [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0];
     this.bassPattern =   [1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1];
     this.bassNotes =     [36, 36, 0, 39, 0, 36, 41, 0, 43, 0, 0, 36, 0, 46, 0, 43];
+    this.leadPattern =   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    this.leadNotes =     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.5;
@@ -100,12 +102,22 @@ export class AudioEngine {
         [44, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 56, 0, 0, 0]
       ];
       this.bassNotes = scales[m];
+
+      // Sparse, slow melody
+      this.leadPattern = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      const melody = [72, 74, 75, 79]; // C5, D5, Eb5, G5
+      this.leadNotes = [0, 0, 0, 0, melody[m], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       return;
     }
 
     // Race mode: Unique patterns based on track index + measure count
     const t = this.trackIndex;
     const m = this.measureCount % 4; // 4 measure loop cycle
+
+    // Driving melody
+    this.leadPattern = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1];
+    const root = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76][t % 10];
+    this.leadNotes = this.leadPattern.map((p, i) => p ? root + (i % 3 === 0 ? 7 : 0) + (m === 3 ? 12 : 0) : 0);
 
     // Kick: gets more intense on the 4th measure (fills)
     if (m === 3) {
@@ -412,6 +424,42 @@ export class AudioEngine {
     this.engineOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.1);
     this.engineGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
   }
+
+  playLead(time, note) {
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc1.type = 'sawtooth';
+    osc2.type = 'square';
+    osc2.detune.setValueAtTime(12, time); // 12 cents detune for thickness
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(this.mode === 'menu' ? 800 : 2000, time);
+    filter.Q.value = 10;
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.musicGain);
+
+    const freq = this.midiToFreq(note);
+    osc1.frequency.setValueAtTime(freq, time);
+    osc2.frequency.setValueAtTime(freq, time);
+
+    const duration = this.mode === 'menu' ? 2.0 : 0.4;
+    const vol = this.mode === 'menu' ? 0.15 : 0.25;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(vol, time + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+    osc1.start(time);
+    osc2.start(time);
+    osc1.stop(time + duration);
+    osc2.stop(time + duration);
+  }
   
   scheduleNote(beatNumber, time) {
     if (this.kickPattern[beatNumber]) {
@@ -425,6 +473,9 @@ export class AudioEngine {
     }
     if (this.bassPattern[beatNumber] && this.bassNotes[beatNumber] !== 0) {
       this.playBass(time, this.bassNotes[beatNumber]);
+    }
+    if (this.leadPattern[beatNumber] && this.leadNotes[beatNumber] !== 0) {
+      this.playLead(time, this.leadNotes[beatNumber]);
     }
   }
   
