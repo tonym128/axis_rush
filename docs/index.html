@@ -10,9 +10,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="./favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DfnAQFiS.js"></script>
+  <script type="module" crossorigin src="./assets/index-CldygP_Z.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-ByC0jJw2.css">
 </head>
 <body>
@@ -58,7 +59,7 @@
               <option value="CAMPAIGN">CAMPAIGN</option>
             </select>
           </div>
-          <div class="setting-row">
+          <div class="setting-row" id="host-track-row">
             <span>TRACK</span>
             <select id="host-track" style="background:#000; color:#0ff; padding:5px; border:1px solid #0ff; font-family:inherit;">
               <option value="0">NEON TUBE</option>
@@ -71,6 +72,14 @@
               <option value="7">GRAVITY WELL</option>
               <option value="8">FRACTAL RIDGE</option>
               <option value="9">QUANTUM KNOT</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>DIFFICULTY</span>
+            <select id="host-diff" style="background:#000; color:#0ff; padding:5px; border:1px solid #0ff; font-family:inherit;">
+              <option value="0">NOVICE</option>
+              <option value="1" selected>PRO</option>
+              <option value="2">ELITE</option>
             </select>
           </div>
           <div class="setting-row">
@@ -106,6 +115,47 @@
           </div>
           <div style="flex: 1; display:flex; flex-direction:column; gap:20px;">
             <div id="lobby-config-info" class="info-box" style="margin:0;"></div>
+            
+            <button id="btn-lobby-ready" class="main-btn" style="color:#ff0; border-color:#ff0;">READY UP</button>
+
+            <div id="host-lobby-controls" style="display:none; flex-direction:column; gap:10px; padding:15px; border:1px solid #0ff; background:rgba(0,255,255,0.05);">
+              <h3 style="color:#0ff; margin:0 0 10px 0; font-size:1rem;">HOST SETTINGS</h3>
+              <div class="setting-row">
+                <span>MODE</span>
+                <select id="lobby-mode" style="background:#000; color:#0ff; border:1px solid #0ff; font-family:inherit;">
+                  <option value="SINGLE">SINGLE RACE</option>
+                  <option value="CAMPAIGN">CAMPAIGN</option>
+                </select>
+              </div>
+              <div class="setting-row" id="lobby-track-row">
+                <span>TRACK</span>
+                <select id="lobby-track" style="background:#000; color:#0ff; border:1px solid #0ff; font-family:inherit;">
+                  <option value="0">NEON TUBE</option>
+                  <option value="1">CYBER SPIRAL</option>
+                  <option value="2">VOID CHASM</option>
+                  <option value="3">STEEL CANYON</option>
+                  <option value="4">PLASMA LOOP</option>
+                  <option value="5">NEBULA DRIFT</option>
+                  <option value="6">CHROMATIC KNOT</option>
+                  <option value="7">GRAVITY WELL</option>
+                  <option value="8">FRACTAL RIDGE</option>
+                  <option value="9">QUANTUM KNOT</option>
+                </select>
+              </div>
+              <div class="setting-row">
+                <span>DIFFICULTY</span>
+                <select id="lobby-diff" style="background:#000; color:#0ff; border:1px solid #0ff; font-family:inherit;">
+                  <option value="0">NOVICE</option>
+                  <option value="1" selected>PRO</option>
+                  <option value="2">ELITE</option>
+                </select>
+              </div>
+              <div class="setting-row">
+                <span>AI RACERS</span>
+                <input type="checkbox" id="lobby-ai" checked style="width:20px; height:20px;">
+              </div>
+            </div>
+
             <button id="btn-lobby-start" class="main-btn selected" style="display:none;">START RACE</button>
             <button id="btn-lobby-leave" class="main-btn" style="color:#f00; border-color:#f00;">LEAVE LOBBY</button>
           </div>
@@ -367,6 +417,12 @@
       <!-- HUD -->
       <div id="hud" class="screen">
         <div id="hud-leaderboard"></div>
+        <div id="net-graph" style="position:absolute; top:20px; right:20px; width:180px; height:100px; background:rgba(0,0,0,0.5); border:1px solid #0ff; display:none; flex-direction:column; padding:10px; font-family:monospace; pointer-events:none;">
+          <div style="color:#0ff; font-size:0.8rem; margin-bottom:5px;">NETWORK STATUS</div>
+          <div id="net-delay" style="color:#0f0; font-size:0.7rem;">DELAY: 0ms</div>
+          <div id="net-throughput" style="color:#ff0; font-size:0.7rem;">RATE: 0 KB/s</div>
+          <canvas id="net-canvas" width="160" height="40" style="margin-top:5px;"></canvas>
+        </div>
         
         <!-- Mobile Controls -->
         <div id="mobile-controls">
