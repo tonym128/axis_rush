@@ -59,6 +59,8 @@ class Game {
     this.currentThrottle = 0;
     this.focusedElement = null;
     this.network = new NetworkManager(this);
+    this.remoteInputs = {};
+    this.netGraphData = [];
     this.settings = {
       audio: { master: 0.5, music: 0.1, sfx: 0.8 },
       kb: {
@@ -511,13 +513,19 @@ class Game {
     // Multiplayer Menu Buttons
     document.getElementById('btn-mp-back').addEventListener('click', () => { this.showMenu(); });
     document.getElementById('btn-host-setup').addEventListener('click', () => { this.showScreen('host-setup'); });
+    
+    document.getElementById('host-mode').addEventListener('change', (e) => {
+      document.getElementById('host-track-row').style.display = (e.target.value === 'SINGLE' ? 'flex' : 'none');
+    });
+
     document.getElementById('btn-host-back').addEventListener('click', () => { this.showScreen('multiplayer-menu'); });
     document.getElementById('btn-host-start').addEventListener('click', () => { 
       const mode = document.getElementById('host-mode').value;
       const track = parseInt(document.getElementById('host-track').value);
+      const diff = parseInt(document.getElementById('host-diff').value);
       const useAI = document.getElementById('host-ai').checked;
       this.network.startHost(PILOTS[this.playerPilotId].name, this.playerPilotId, this.vehicleType, {
-        mode, mapIndex: track, difficulty: 1, useAI
+        mode, mapIndex: track, difficulty: diff, useAI
       });
       this.showScreen('mp-lobby');
     });
@@ -543,6 +551,23 @@ class Game {
     document.getElementById('btn-lobby-start').addEventListener('click', () => {
       this.network.startGameHost();
     });
+
+    const updateHostLobbyConfig = () => {
+      if (!this.network.isHost) return;
+      this.network.hostConfig = {
+        mode: document.getElementById('lobby-mode').value,
+        mapIndex: parseInt(document.getElementById('lobby-track').value),
+        difficulty: parseInt(document.getElementById('lobby-diff').value),
+        useAI: document.getElementById('lobby-ai').checked
+      };
+      document.getElementById('lobby-track-row').style.display = (this.network.hostConfig.mode === 'SINGLE' ? 'flex' : 'none');
+      this.network.broadcastLobbyState();
+    };
+
+    document.getElementById('lobby-mode').addEventListener('change', updateHostLobbyConfig);
+    document.getElementById('lobby-track').addEventListener('change', updateHostLobbyConfig);
+    document.getElementById('lobby-diff').addEventListener('change', updateHostLobbyConfig);
+    document.getElementById('lobby-ai').addEventListener('change', updateHostLobbyConfig);
     
     document.getElementById('btn-league-intro-next').addEventListener('click', () => { this.showCharIntro(); });
     document.getElementById('btn-char-intro-start').addEventListener('click', () => { this.showLeagueStandings(); });
@@ -1225,9 +1250,16 @@ class Game {
 
   updateHUD() {
     if (!this.player) return;
-    const allRacers = [this.player, ...this.ais];
+    let allRacers = [];
+    if (this.gameMode === 'MULTIPLAYER' && this.mpPlayers) {
+      allRacers = Object.values(this.mpPlayers).concat(this.ais);
+    } else {
+      allRacers = [this.player, ...this.ais];
+    }
     allRacers.sort((a, b) => a.rank - b.rank);
-    document.getElementById('pos-display').innerText = `POS: ${this.player.rank}/${allRacers.length}`;
+    
+    const numPlayers = allRacers.length;
+    document.getElementById('pos-display').innerText = `POS: ${this.player.rank}/${numPlayers}`;
     document.getElementById('lap-display').innerText = `LAP: ${Math.min(3, this.player.lap)}/3`;
     document.getElementById('speed-display').innerText = `SPEED: ${Math.floor(this.player.speed)} KM/H`;
     document.getElementById('weapon-display').innerText = `WEAPON: ${(this.player.weapon || 'NONE').toUpperCase()}`;
@@ -1264,11 +1296,29 @@ class Game {
     }
 
     const lb = document.getElementById('hud-leaderboard'); lb.innerHTML = '';
+    const currentTime = ((performance.now() - this.lapStartTime) / 1000).toFixed(2);
+    
+    // Header for timetable
+    const header = document.createElement('div');
+    header.className = 'lb-row';
+    header.style.color = '#0ff';
+    header.style.fontSize = '0.7rem';
+    header.innerHTML = `<span>PILOT</span><span>TIME/GAP</span>`;
+    lb.appendChild(header);
+
     allRacers.forEach((r, idx) => {
       const row = document.createElement('div'); row.className = 'lb-row'; if (r.isPlayer) row.classList.add('player');
-      const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
-      const gapText = r.isPlayer ? "--" : (gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`);
-      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${gapText}</span>`; lb.appendChild(row);
+      
+      let infoText = "";
+      if (r.isPlayer) {
+        infoText = `${currentTime}s`;
+      } else {
+        const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
+        infoText = gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`;
+      }
+      
+      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${infoText}</span>`; 
+      lb.appendChild(row);
     });
     
     // Time Trial HUD
@@ -1291,6 +1341,41 @@ class Game {
     let raceOver = false;
     if (allRacers.some(r => r.lap > 3)) raceOver = true;
     if (raceOver && this.state !== 'FINISHED') this.finishRace(allRacers);
+  }
+
+  drawNetGraph() {
+    const netGraph = document.getElementById('net-graph');
+    if (this.gameMode !== 'MULTIPLAYER' || this.state === 'MENU') {
+      netGraph.style.display = 'none';
+      return;
+    }
+    netGraph.style.display = 'flex';
+    
+    const delayEl = document.getElementById('net-delay');
+    const throughputEl = document.getElementById('net-throughput');
+    const canvas = document.getElementById('net-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    const m = this.network.metrics;
+    delayEl.innerText = `DELAY: ${Math.round(m.delay)}ms`;
+    throughputEl.innerText = `RATE: ${(m.throughputIn / 1024).toFixed(1)} KB/s IN / ${(m.throughputOut / 1024).toFixed(1)} KB/s OUT`;
+    
+    // Update graph data
+    this.netGraphData.push(m.delay);
+    if (this.netGraphData.length > 80) this.netGraphData.shift();
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#0ff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const maxVal = 200; // max scale 200ms
+    for (let i = 0; i < this.netGraphData.length; i++) {
+      const x = (i / 80) * canvas.width;
+      const y = canvas.height - (Math.min(maxVal, this.netGraphData[i]) / maxVal) * canvas.height;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
   
   finishRace(rankedRacers) {
@@ -1386,34 +1471,49 @@ class Game {
       if (this.inputs.accelerate) this.currentThrottle = Math.min(1.0, this.currentThrottle + dt * 1.5);
       else this.currentThrottle = Math.max(0.0, this.currentThrottle - dt * 2.0);
 
-      if (this.state === 'RACING') {
+      if (this.state === 'RACING' || this.state === 'STARTING') {
         if (this.gameMode === 'MULTIPLAYER' && !this.network.isHost) {
           this.network.sendInput(this.inputs);
         } else {
-          this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
+          // Host or Single Player
+          if (this.state === 'RACING') {
+            this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
+          } else {
+            this.player.update(0, this.track, { accelerate: false }, allRacers, spawnFn);
+          }
           
           if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
             for (let id in this.remoteInputs) {
               if (this.mpPlayers[id] && id !== this.network.myId) {
-                this.mpPlayers[id].update(dt, this.track, this.remoteInputs[id], allRacers, spawnFn);
+                if (this.state === 'RACING') {
+                  this.mpPlayers[id].update(dt, this.track, this.remoteInputs[id], allRacers, spawnFn);
+                } else {
+                  this.mpPlayers[id].update(0, this.track, { accelerate: false }, allRacers, spawnFn);
+                }
               }
             }
           }
 
-          for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
-          this.updateRanks(allRacers);
+          if (this.state === 'RACING') {
+            for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
+            this.updateRanks(allRacers);
+          } else {
+            for (const ai of this.ais) ai.update(0, this.track, this.player, allRacers, spawnFn);
+          }
 
-          // Lap recording
-          const now = performance.now();
-          allRacers.forEach(r => {
-            if (r.lap > r._lastRecordedLap) {
-              const time = now - r._lapStartTime;
-              r.lapTimes.push(time);
-              r._lapStartTime = now;
-              r._lastRecordedLap = r.lap;
-              if (r === this.player) this.onPlayerLapComplete(time, r.lap - 1);
-            }
-          });
+          if (this.state === 'RACING') {
+            // Lap recording
+            const now = performance.now();
+            allRacers.forEach(r => {
+              if (r.lap > r._lastRecordedLap) {
+                const time = now - r._lapStartTime;
+                r.lapTimes.push(time);
+                r._lapStartTime = now;
+                r._lastRecordedLap = r.lap;
+                if (r === this.player) this.onPlayerLapComplete(time, r.lap - 1);
+              }
+            });
+          }
 
           if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
             const state = { mp: {}, ai: [] };
@@ -1427,6 +1527,8 @@ class Game {
             this.network.broadcastGameState(state);
           }
         }
+
+        if (this.state === 'STARTING') this.countdownTimer -= dt;
 
         this.weaponSystem.update(dt, allRacers);
         if (this.player.cameraShakeRequest > 0) { this.cameraShakeIntensity = Math.max(this.cameraShakeIntensity, this.player.cameraShakeRequest); this.player.cameraShakeRequest = 0; }
@@ -1506,10 +1608,6 @@ class Game {
         this.player.update(dt, this.track, { accelerate: false, brake: true }, allRacers, spawnFn);
         for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
         this.weaponSystem.update(dt, allRacers);
-      } else if (this.state === 'STARTING') {
-        this.player.update(0, this.track, { accelerate: false }, allRacers, spawnFn);
-        for (const ai of this.ais) ai.update(0, this.track, this.player, allRacers, spawnFn);
-        this.countdownTimer -= dt;
       }
       const speedFactor = this.player ? Math.max(0, (this.player.speed - 200) / 350) : 0;
       this.chromaticEffect.offset.set(speedFactor * 0.015, speedFactor * 0.015);
@@ -1610,16 +1708,30 @@ class Game {
       list.innerHTML += `<div style="padding:10px; background:#111; border:1px solid #0f0; color:#0f0;">${p.name} (Pilot: ${PILOTS[p.pilotId].name}) ${p.isHost ? '[HOST]' : ''}</div>`;
     });
     
+    const config = this.network.hostConfig;
     document.getElementById('lobby-config-info').innerHTML = `
-      <div style="color:#0ff;">MODE: ${this.network.hostConfig.mode}</div>
-      <div style="color:#0ff;">TRACK: ${MAPS[this.network.hostConfig.mapIndex].name}</div>
-      <div style="color:#0ff;">AI RACERS: ${this.network.hostConfig.useAI ? 'ON' : 'OFF'}</div>
+      <div style="color:#0ff; font-weight:bold; margin-bottom:5px;">RACE CONFIGURATION</div>
+      <div style="color:#0ff;">MODE: ${config.mode}</div>
+      <div style="color:#0ff;">TRACK: ${MAPS[config.mapIndex].name}</div>
+      <div style="color:#0ff;">DIFFICULTY: ${['NOVICE','PRO','ELITE'][config.difficulty]}</div>
+      <div style="color:#0ff;">AI RACERS: ${config.useAI ? 'ON' : 'OFF'}</div>
     `;
 
+    const hostControls = document.getElementById('host-lobby-controls');
     const startBtn = document.getElementById('btn-lobby-start');
+    
     if (this.network.isHost) {
+      hostControls.style.display = 'flex';
       startBtn.style.display = 'block';
+      
+      // Sync UI to model (in case of re-entry)
+      document.getElementById('lobby-mode').value = config.mode;
+      document.getElementById('lobby-track').value = config.mapIndex;
+      document.getElementById('lobby-diff').value = config.difficulty;
+      document.getElementById('lobby-ai').checked = config.useAI;
+      document.getElementById('lobby-track-row').style.display = (config.mode === 'SINGLE' ? 'flex' : 'none');
     } else {
+      hostControls.style.display = 'none';
       startBtn.style.display = 'none';
     }
   }
@@ -1675,7 +1787,7 @@ class Game {
     
     if (state.mp) {
       for (let id in state.mp) {
-        if (id !== this.network.myId && this.mpPlayers[id]) {
+        if (this.mpPlayers[id]) {
           const s = state.mp[id];
           const v = this.mpPlayers[id];
           v.t = s.t; v.angle = s.a; v.speed = s.s; v.sideFactor = s.sf; v.rank = s.r; v.lap = s.l;
@@ -1700,6 +1812,7 @@ class Game {
     if (this.clock.update) this.clock.update();
     const dt = this.clock.getDelta(); this.update(Math.min(dt, 0.1)); 
     this.renderer.setViewport(0, 0, window.innerWidth, window.innerHeight); this.renderer.setScissorTest(false); this.composer.render();
+    this.drawNetGraph();
     const trackSelect = document.getElementById('track-select'); const isMapSelect = trackSelect.classList.contains('active');
     const carSelect = document.getElementById('car-select'); const isCarSelect = carSelect.classList.contains('active');
     const isRacing = (this.state === 'RACING' || this.state === 'FINISHED' || this.state === 'STARTING');

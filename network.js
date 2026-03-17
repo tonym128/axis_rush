@@ -18,16 +18,28 @@ export class NetworkManager {
       difficulty: 1,
       useAI: true
     };
+    
+    // Performance Metrics
+    this.metrics = {
+      delay: 0,
+      throughputIn: 0, // bytes/sec
+      throughputOut: 0, // bytes/sec
+      bytesIn: 0,
+      bytesOut: 0,
+      lastMeasureTime: Date.now()
+    };
+    this.pingInterval = null;
   }
 
   initPeer(onReady) {
     if (this.peer) return onReady();
     // Using global Peer from CDN
     this.peer = new window.Peer(null, {
-      debug: 2
+      debug: 1
     });
     this.peer.on('open', (id) => {
       this.myId = id;
+      this.startMetricsLoop();
       onReady();
     });
     this.peer.on('connection', (conn) => {
@@ -35,7 +47,10 @@ export class NetworkManager {
       conn.on('open', () => {
         this.connections[conn.peer] = conn;
       });
-      conn.on('data', (data) => this.handleHostData(conn.peer, data));
+      conn.on('data', (data) => {
+        this.trackInbound(data);
+        this.handleHostData(conn.peer, data);
+      });
       conn.on('close', () => {
         delete this.connections[conn.peer];
         delete this.players[conn.peer];
@@ -44,8 +59,49 @@ export class NetworkManager {
     });
     this.peer.on('error', (err) => {
       console.error('Peer error:', err);
-      alert('Network Error: ' + err.type);
+      if (err.type !== 'peer-unavailable') {
+        alert('Network Error: ' + err.type);
+      }
     });
+  }
+
+  startMetricsLoop() {
+    setInterval(() => {
+      const now = Date.now();
+      const dt = (now - this.metrics.lastMeasureTime) / 1000;
+      if (dt >= 1.0) {
+        this.metrics.throughputIn = Math.round(this.metrics.bytesIn / dt);
+        this.metrics.throughputOut = Math.round(this.metrics.bytesOut / dt);
+        this.metrics.bytesIn = 0;
+        this.metrics.bytesOut = 0;
+        this.metrics.lastMeasureTime = now;
+      }
+    }, 1000);
+
+    // Ping loop for delay
+    setInterval(() => {
+      if (this.isHost) {
+        // Host doesn't ping themselves, but could ping all clients? 
+        // Usually clients ping host to see their delay.
+      } else if (this.hostConnection && this.hostConnection.open) {
+        this.sendData({ type: 'PING', t: Date.now() }, this.hostConnection);
+      }
+    }, 2000);
+  }
+
+  trackInbound(data) {
+    try {
+      this.metrics.bytesIn += JSON.stringify(data).length;
+    } catch(e) {}
+  }
+
+  sendData(data, conn) {
+    if (conn && conn.open) {
+      conn.send(data);
+      try {
+        this.metrics.bytesOut += JSON.stringify(data).length;
+      } catch(e) {}
+    }
   }
 
   // --- LOBBY BROWSER ---
@@ -143,12 +199,15 @@ export class NetworkManager {
     this.initPeer(() => {
       this.hostConnection = this.peer.connect(hostId, { reliable: true });
       this.hostConnection.on('open', () => {
-        this.hostConnection.send({
+        this.sendData({
           type: 'JOIN_LOBBY',
           player: { name: playerName, pilotId, vehicleId, ready: true }
-        });
+        }, this.hostConnection);
       });
-      this.hostConnection.on('data', (data) => this.handleClientData(data));
+      this.hostConnection.on('data', (data) => {
+        this.trackInbound(data);
+        this.handleClientData(data);
+      });
       this.hostConnection.on('close', () => {
         alert('Host disconnected');
         this.game.showMenu();
@@ -169,7 +228,7 @@ export class NetworkManager {
       config: this.hostConfig
     };
     for (let id in this.connections) {
-      this.connections[id].send(msg);
+      this.sendData(msg, this.connections[id]);
     }
     this.game.updateLobbyUI();
   }
@@ -178,7 +237,7 @@ export class NetworkManager {
     if (!this.isHost) return;
     const msg = { type: 'GAME_STATE', state };
     for (let id in this.connections) {
-      this.connections[id].send(msg);
+      this.sendData(msg, this.connections[id]);
     }
   }
 
@@ -191,7 +250,7 @@ export class NetworkManager {
       config: this.hostConfig
     };
     for (let id in this.connections) {
-      this.connections[id].send(msg);
+      this.sendData(msg, this.connections[id]);
     }
     this.game.startMultiplayerRace(this.players, this.hostConfig);
   }
@@ -199,13 +258,15 @@ export class NetworkManager {
   sendInput(inputs) {
     if (this.isHost) return;
     if (this.hostConnection && this.hostConnection.open) {
-      this.hostConnection.send({ type: 'INPUT', inputs });
+      this.sendData({ type: 'INPUT', inputs }, this.hostConnection);
     }
   }
 
   // --- HANDLERS ---
   handleHostData(peerId, data) {
-    if (data.type === 'JOIN_LOBBY') {
+    if (data.type === 'PING') {
+      this.sendData({ type: 'PONG', t: data.t }, this.connections[peerId]);
+    } else if (data.type === 'JOIN_LOBBY') {
       this.players[peerId] = { ...data.player, id: peerId, isHost: false };
       this.broadcastLobbyState();
     } else if (data.type === 'INPUT') {
@@ -216,7 +277,9 @@ export class NetworkManager {
   }
 
   handleClientData(data) {
-    if (data.type === 'LOBBY_STATE') {
+    if (data.type === 'PONG') {
+      this.metrics.delay = Date.now() - data.t;
+    } else if (data.type === 'LOBBY_STATE') {
       this.players = data.players;
       this.hostConfig = data.config;
       this.game.updateLobbyUI();
