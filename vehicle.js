@@ -1,20 +1,22 @@
 import * as THREE from 'three';
 import { textureManager } from './textures.js';
-import { VEHICLE_BASE_STATS } from './constants.js';
+import { VEHICLE_BASE_STATS, GAME_CONFIG, DIFFICULTY_SETTINGS } from './constants.js';
 import { audioEngine } from './audio.js';
 
 export class Vehicle {
-  constructor(scene, type, isPlayer, pilot = { id: -1, name: "UNKNOWN", color: new THREE.Color(0xffffff) }, upgrades = { speed: 0, handling: 0, armor: 0 }) {
+  constructor(scene, type, isPlayer, pilot = { id: -1, name: "UNKNOWN", color: new THREE.Color(0xffffff) }, upgrades = { speed: 0, handling: 0, armor: 0 }, difficulty = 1) {
     this.scene = scene;
     this.type = type; 
     this.isPlayer = isPlayer;
-    this.isHuman = isPlayer; // Default to isPlayer, can be overridden for remote humans
+    this.isHuman = isPlayer; 
     this.pilot = pilot;
+    this.difficulty = difficulty;
+    this.diffSettings = DIFFICULTY_SETTINGS[difficulty];
     
     const stats = VEHICLE_BASE_STATS[type];
     
-    this.maxSpeed = stats.speed + (upgrades.speed * 17.5);
-    this.acceleration = stats.accel + (upgrades.speed * 10.5);
+    this.maxSpeed = (stats.speed + (upgrades.speed * 17.5)) * this.diffSettings.speedMultiplier;
+    this.acceleration = (stats.accel + (upgrades.speed * 10.5)) * this.diffSettings.speedMultiplier;
     this.handling = stats.handling + (upgrades.handling * 0.4);
     
     this.speed = 0;
@@ -55,7 +57,7 @@ export class Vehicle {
     this.scene.add(this.numberLabel);
 
     this.trailHistory = [];
-    this.maxTrailPoints = 40;
+    this.maxTrailPoints = GAME_CONFIG.TRAIL_MAX_POINTS;
     this.trailMesh = this.createTrailMesh();
     this.scene.add(this.trailMesh);
 
@@ -105,7 +107,6 @@ export class Vehicle {
     if (!this.isPlayer) matOptions.color = this.pilot.color;
     const mat = textureManager.getMaterial(colorWord, matOptions);
     
-    // Add glowing accent material based on pilot color
     const accentColor = this.isPlayer ? 0x00ffff : this.pilot.color.getHex();
     const glowMat = new THREE.MeshStandardMaterial({ 
       color: accentColor, emissive: accentColor, emissiveIntensity: 2.0, metalness: 0.8, roughness: 0.2
@@ -113,7 +114,6 @@ export class Vehicle {
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.5 });
 
     if (this.type === 0) { 
-      // LIGHT CLASS: Sleek, agile, forward-swept wings (Needle shape)
       const core = new THREE.Mesh(new THREE.ConeGeometry(1.5, 8, 4), mat);
       core.rotateX(-Math.PI / 2); core.position.z = -1;
       const wingG = new THREE.BoxGeometry(6, 0.5, 2);
@@ -130,7 +130,6 @@ export class Vehicle {
       group.add(core, wings, engine1, engine2, cockpit, accent);
     }
     else if (this.type === 1) { 
-      // BALANCED CLASS: Twin-hull Interceptor
       const hullL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 7), mat);
       hullL.position.x = -1.5;
       const hullR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 7), mat);
@@ -150,14 +149,13 @@ export class Vehicle {
       group.add(hullL, hullR, bridge, cockpit, wingL, wingR, glowL, glowR);
     }
     else { 
-      // HEAVY CLASS: Brutalist, blocky, twin massive engines
-      const core = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 7), mat); // Slightly smaller to avoid engine overlap
+      const core = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 7), mat);
       const eLeft = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 6, 8), darkMat);
       eLeft.rotateX(Math.PI / 2); eLeft.position.set(-2.5, 0, 0.5);
       const eRight = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 6, 8), darkMat);
       eRight.rotateX(Math.PI / 2); eRight.position.set(2.5, 0, 0.5);
       const plate1 = new THREE.Mesh(new THREE.BoxGeometry(8, 0.5, 2), mat);
-      plate1.position.set(0, 1.55, -1); // Offset to avoid z-fighting with core
+      plate1.position.set(0, 1.55, -1);
       const armorG = new THREE.BoxGeometry(3, 3, 2);
       const armorFront = new THREE.Mesh(armorG, darkMat);
       armorFront.position.set(0, 0, -3.5);
@@ -186,7 +184,7 @@ export class Vehicle {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.MeshBasicMaterial({
       color: this.isPlayer ? 0x00ffff : this.pilot.color.getHex(), 
-      transparent: true, opacity: 0.7, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+      transparent: true, opacity: GAME_CONFIG.TRAIL_OPACITY_BASE, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
     });
     const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; return mesh;
   }
@@ -226,11 +224,11 @@ export class Vehicle {
   takeDamage(amount, attacker = null, otherRacers = []) {
     if (this.isExploded || this.invulnerableTimer > 0) return;
     if (this.isPlayer) audioEngine.playHit();
-    this.energy -= amount; this.flashTimer = 0.5;
-    this.invulnerableTimer = 1.0;
+    this.energy -= amount * this.diffSettings.damageMultiplier; 
+    this.flashTimer = GAME_CONFIG.SHIELD_FLASH_DURATION;
+    this.invulnerableTimer = GAME_CONFIG.HIT_INVULNERABILITY;
     if (this.isPlayer) {
       this.cameraShakeRequest = amount * 0.05;
-      // Push others away
       for (const other of otherRacers) {
         if (other === this || other.isExploded) continue;
         const distT = Math.abs(this.lapProgress - other.lapProgress);
@@ -245,7 +243,6 @@ export class Vehicle {
         }
       }
     } else if (attacker && attacker.isPlayer) {
-      // AI was hit by player
       if (window.gameInstance) window.gameInstance.showComms(this.pilot, 'onHit');
     }
     if (attacker && attacker !== this) { const id = attacker.pilot.id; this.rivalries[id] = (this.rivalries[id] || 0) + 1; }
@@ -262,7 +259,6 @@ export class Vehicle {
   updateInvulnerability(dt) {
     if (this.invulnerableTimer > 0) {
       this.invulnerableTimer -= dt;
-      // Flickering effect
       const blink = Math.sin(performance.now() * 0.05) > 0;
       this.mesh.visible = blink;
     } else {
@@ -285,7 +281,7 @@ export class Vehicle {
       positions[i * 6 + 3] = entry.p2.x; positions[i * 6 + 4] = entry.p2.y; positions[i * 6 + 5] = entry.p2.z;
     }
     this.trailMesh.geometry.attributes.position.needsUpdate = true;
-    this.trailMesh.material.opacity = (this.speed / 280) * 0.7;
+    this.trailMesh.material.opacity = (this.speed / (this.maxSpeed * 1.2)) * GAME_CONFIG.TRAIL_OPACITY_BASE;
   }
 
   updateSlipstream(otherRacers) {
@@ -314,7 +310,7 @@ export class Vehicle {
 
   updateBlurLines() {
     if (!this.isPlayer) { this.blurLines.visible = false; return; }
-    const speedFactor = Math.max(0, (this.speed - 140) / 210);
+    const speedFactor = Math.max(0, (this.speed - this.maxSpeed * 0.5) / (this.maxSpeed * 0.8));
     if (speedFactor <= 0) { this.blurLines.visible = false; return; }
     this.blurLines.visible = true; this.blurLines.material.opacity = speedFactor * 0.4;
     const positions = this.blurLines.geometry.attributes.position.array;
@@ -334,8 +330,8 @@ export class Vehicle {
     if (this.isExploded) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
-        this.isExploded = false; this.energy = 50; this.speed = 0;
-        this.invulnerableTimer = 5.0; // Long recovery for deaths
+        this.isExploded = false; this.energy = this.maxEnergy * 0.5; this.speed = 0;
+        this.invulnerableTimer = GAME_CONFIG.RESPAWN_INVULNERABILITY;
         this.mesh.visible = true; 
         if (this.trailMesh.visible !== false) this.trailMesh.visible = true;
         if (this.minimapMarker.visible !== false) this.minimapMarker.visible = true;
@@ -346,22 +342,41 @@ export class Vehicle {
     }
 
     this.updateSlipstream(otherRacers);
-    if (this.bonusSpeed > 0) { this.bonusSpeed -= 75 * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
-    if (this.lap > 1 && inputs.boost && this.energy > 5) { this.energy -= 20 * dt; this.bonusSpeed = Math.max(this.bonusSpeed, 75); }
-    let currentMaxSpeed = this.maxSpeed + this.bonusSpeed; if (this.slipstreamActive) currentMaxSpeed *= 1.1; 
+    if (this.bonusSpeed > 0) { this.bonusSpeed -= GAME_CONFIG.BOOST_DECAY * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
+    if (this.lap > 1 && inputs.boost && this.energy > 5) { 
+      this.energy -= GAME_CONFIG.BOOST_ENERGY_CONSUMPTION * dt; 
+      this.bonusSpeed = Math.max(this.bonusSpeed, GAME_CONFIG.MANUAL_BOOST_MIN_BONUS); 
+    }
+    let currentMaxSpeed = this.maxSpeed + this.bonusSpeed; 
+    if (this.slipstreamActive) currentMaxSpeed *= GAME_CONFIG.SLIPSTREAM_MULTIPLIER; 
     
     if (dt > 0) {
-      if (inputs.accelerate) this.speed += this.acceleration * dt; else if (inputs.brake) this.speed -= this.acceleration * 1.5 * dt; else this.speed -= this.acceleration * 0.5 * dt; 
-      this.speed = Math.max(0, Math.min(this.speed, currentMaxSpeed)); if (inputs.left || inputs.right) this.speed -= this.speed * 0.02 * dt;
-      const steeringAccel = this.handling * 10.0, steeringFriction = 4.0;
-      if (inputs.left) this.angularVelocity -= steeringAccel * dt; else if (inputs.right) this.angularVelocity += steeringAccel * dt; else this.angularVelocity -= this.angularVelocity * steeringFriction * dt;
-      const maxAngVel = 2.0; this.angularVelocity = Math.max(-maxAngVel, Math.min(maxAngVel, this.angularVelocity));
-      const sideMultiplier = this.sideFactor < 0 ? -1.0 : 1.0; this.angle += this.angularVelocity * sideMultiplier * dt;
+      if (inputs.accelerate) this.speed += this.acceleration * dt; 
+      else if (inputs.brake) this.speed -= this.acceleration * GAME_CONFIG.BRAKE_MULTIPLIER * dt; 
+      else this.speed -= this.acceleration * GAME_CONFIG.COAST_MULTIPLIER * dt; 
+      
+      this.speed = Math.max(0, Math.min(this.speed, currentMaxSpeed)); 
+      if (inputs.left || inputs.right) this.speed -= this.speed * GAME_CONFIG.TURN_SPEED_LOSS * dt;
+      
+      const steeringAccel = this.handling * GAME_CONFIG.STEERING_ACCEL_MULT, steeringFriction = GAME_CONFIG.STEERING_FRICTION;
+      if (inputs.left) this.angularVelocity -= steeringAccel * dt; 
+      else if (inputs.right) this.angularVelocity += steeringAccel * dt; 
+      else this.angularVelocity -= this.angularVelocity * steeringFriction * dt;
+      
+      this.angularVelocity = Math.max(-GAME_CONFIG.MAX_ANGULAR_VELOCITY, Math.min(GAME_CONFIG.MAX_ANGULAR_VELOCITY, this.angularVelocity));
+      const sideMultiplier = this.sideFactor < 0 ? -1.0 : 1.0; 
+      this.angle += this.angularVelocity * sideMultiplier * dt;
+      
       if (inputs.switch) { this.isInside = !this.isInside; this.targetSideFactor = this.isInside ? -1.0 : 1.0; inputs.switch = false; }
-      const transitionSpeed = 4.0; if (this.sideFactor < this.targetSideFactor) this.sideFactor = Math.min(this.targetSideFactor, this.sideFactor + dt * transitionSpeed); else if (this.sideFactor > this.targetSideFactor) this.sideFactor = Math.max(this.targetSideFactor, this.sideFactor - dt * transitionSpeed);
+      if (this.sideFactor < this.targetSideFactor) this.sideFactor = Math.min(this.targetSideFactor, this.sideFactor + dt * GAME_CONFIG.SIDE_TRANSITION_SPEED); 
+      else if (this.sideFactor > this.targetSideFactor) this.sideFactor = Math.max(this.targetSideFactor, this.sideFactor - dt * GAME_CONFIG.SIDE_TRANSITION_SPEED);
+      
       if (inputs.fire && this.weapon) { this.fireWeapon(spawnProjectile); inputs.fire = false; }
       if (this.angle < 0) this.angle += Math.PI * 2; if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
-      const trackLength = 12000; const deltaT = (this.speed * dt) / trackLength; this.t += deltaT; this.lapProgress += deltaT; if (this.t >= 1.0) { this.t -= 1.0; this.lap++; }
+      
+      const deltaT = (this.speed * dt) / GAME_CONFIG.TRACK_TOTAL_LENGTH; 
+      this.t += deltaT; this.lapProgress += deltaT; 
+      if (this.t >= 1.0) { this.t -= 1.0; this.lap++; }
     }
 
     const frame = track.getFrameAt(this.t); const crossNormal = new THREE.Vector3().copy(frame.normal).applyAxisAngle(frame.tangent, this.angle);
@@ -395,7 +410,7 @@ export class Vehicle {
 
   explode() {
     this.isExploded = true;
-    this.respawnTimer = 3.0;
+    this.respawnTimer = GAME_CONFIG.RESPAWN_TIME;
     this.mesh.visible = false;
     this.trailMesh.visible = false;
     this.minimapMarker.visible = false;
@@ -412,7 +427,7 @@ export class Vehicle {
       if ((other.sideFactor > 0) !== (this.sideFactor > 0)) continue;
       
       const tDiff = Math.abs(this.lapProgress - other.lapProgress);
-      if (tDiff < 0.002) { // Rough optimization
+      if (tDiff < 0.002) { 
         if (this.boundingBox.intersectsBox(other.boundingBox)) {
           let angleDiff = this.angle - other.angle;
           while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -420,8 +435,8 @@ export class Vehicle {
           this.angle += direction * pushForce; other.angle -= direction * pushForce;
           const avgSpeed = (this.speed + other.speed) * 0.5; this.speed = avgSpeed * 0.9; other.speed = avgSpeed * 0.9;
           this.shakeAmount = 1.5; other.shakeAmount = 1.5; 
-          this.takeDamage(5, other, otherRacers); 
-          other.takeDamage(5, this, otherRacers);
+          this.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, other, otherRacers); 
+          other.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, this, otherRacers);
         }
       }
     }
@@ -433,7 +448,7 @@ export class Vehicle {
       if (!item.active && item.type !== 'recharge') continue; 
       
       const tDiff = Math.abs(this.t - item.t);
-      const tolerance = 0.02; // Rough optimization distance
+      const tolerance = GAME_CONFIG.COLLISION_T_TOLERANCE; 
       if (tDiff > tolerance && tDiff < (1.0 - tolerance)) continue; 
       
       if (this.boundingBox.intersectsBox(item.boundingBox)) {
@@ -442,32 +457,37 @@ export class Vehicle {
           if (this.isPlayer) audioEngine.playRecharge();
           continue; 
         }
-        item.active = false; item.mesh.visible = false; item.cooldown = 5.0; 
+        item.active = false; item.mesh.visible = false; item.cooldown = GAME_CONFIG.ITEM_COOLDOWN; 
         if (item.type === 'boost') { 
-          this.bonusSpeed = 150; this.speed += 100; 
+          this.bonusSpeed = GAME_CONFIG.BOOST_PAD_BONUS_SPEED; 
+          this.speed += GAME_CONFIG.BOOST_PAD_INSTANT_SPEED; 
           if (this.isPlayer) { this.cameraShakeRequest = 1.2; audioEngine.playBoost(); }
         }
         else if (item.type === 'weapon') {
           const weapons = ['missile', 'oil', 'barrel']; this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
           if (this.isPlayer) document.getElementById('weapon-display').innerText = `WEAPON: ${this.weapon.toUpperCase()}`;
-        } else if (item.type === 'obstacle') { this.speed *= 0.3; this.takeDamage(20, null, otherRacers); }
+        } else if (item.type === 'obstacle') { 
+          this.speed *= 0.3; 
+          this.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_OBSTACLE, null, otherRacers); 
+        }
       }
     }
-    if (onRecharge) this.energy = Math.min(this.maxEnergy, this.energy + 50 * 0.016);
+    if (onRecharge) this.energy = Math.min(this.maxEnergy, this.energy + GAME_CONFIG.RECHARGE_RATE * this.diffSettings.energyRegen * 0.016);
   }
-        }
+}
 
-        export class AI extends Vehicle {
+export class AI extends Vehicle {
   constructor(scene, difficulty, pilot) {
-    super(scene, Math.floor(Math.random() * 3), false, pilot);
+    super(scene, Math.floor(Math.random() * 3), false, pilot, { speed: 0, handling: 0, armor: 0 }, difficulty);
     this.isHuman = false;
-    this.difficulty = difficulty; 
     this.t = 0; 
     this.angle = 0;
     this.lapProgress = 0; 
     this.targetAngle = 0; 
     this.reactionTimer = 0;
-  }        update(dt, track, player, otherRacers = [], spawnProjectile = null) {
+  }
+
+  update(dt, track, player, otherRacers = [], spawnProjectile = null) {
     if (this.isExploded) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
@@ -491,8 +511,8 @@ export class Vehicle {
     let distToPlayer = 0;
 
     if (this.reactionTimer <= 0) {
-      this.reactionTimer = 0.4 - this.difficulty * 0.1;
-      let nearestPad = null, nearestObstacle = null, minDistPad = 0.08, minDistObs = 0.04; 
+      this.reactionTimer = GAME_CONFIG.AI_BASE_REACTION - this.difficulty * GAME_CONFIG.AI_DIFFICULTY_REACTION_STEP;
+      let nearestPad = null, nearestObstacle = null, minDistPad = GAME_CONFIG.AI_PAD_DETECTION_DIST, minDistObs = GAME_CONFIG.AI_OBSTACLE_DETECTION_DIST; 
       for (const item of track.items) {
         if (!item.active || item.isInside !== this.isInside) continue;
         let dist = item.t - this.t; if (dist < 0) dist += 1.0;
@@ -519,7 +539,7 @@ export class Vehicle {
       distToPlayer = this.lapProgress - player.lapProgress;
     }
 
-    let diffMult = [0.8, 0.92, 1.05][this.difficulty];
+    let diffMult = this.diffSettings.aiDiffMult[this.difficulty];
     if (player) {
       if (distToPlayer < -0.1) diffMult *= 1.2; else if (distToPlayer > 0.1) diffMult *= 0.9;
       if (distToPlayer > 0.05 && Math.random() > 0.8) inputs.accelerate = false;

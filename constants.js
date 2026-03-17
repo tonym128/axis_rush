@@ -1,5 +1,91 @@
 import * as THREE from 'three';
 
+// --- GAMEPLAY CONFIGURATION ---
+export const GAME_CONFIG = {
+  // Speed & Physics
+  TRACK_TOTAL_LENGTH: 12000,
+  BRAKE_MULTIPLIER: 1.5,
+  COAST_MULTIPLIER: 0.5,
+  TURN_SPEED_LOSS: 0.02,
+  STEERING_ACCEL_MULT: 10.0,
+  STEERING_FRICTION: 4.0,
+  MAX_ANGULAR_VELOCITY: 2.0,
+  SIDE_TRANSITION_SPEED: 4.0,
+  
+  // Boost & Energy
+  BOOST_DECAY: 75,
+  BOOST_ENERGY_CONSUMPTION: 20,
+  MANUAL_BOOST_MIN_BONUS: 75,
+  SLIPSTREAM_MULTIPLIER: 1.1,
+  BOOST_PAD_BONUS_SPEED: 150,
+  BOOST_PAD_INSTANT_SPEED: 100,
+  RECHARGE_RATE: 50,
+  
+  // Damage & Recovery
+  DAMAGE_COLLISION_VEHICLE: 5,
+  DAMAGE_COLLISION_OBSTACLE: 20,
+  RESPAWN_TIME: 3.0,
+  RESPAWN_INVULNERABILITY: 5.0,
+  HIT_INVULNERABILITY: 1.0,
+  SHIELD_FLASH_DURATION: 0.5,
+  
+  // Items & Track
+  TRACK_RADIUS: 20,
+  TRACK_SEGMENTS: 400,
+  TRACK_RADIAL_SEGMENTS: 16,
+  ITEM_COOLDOWN: 5.0,
+  COLLISION_T_TOLERANCE: 0.02,
+  
+  // Visuals & Camera
+  TRAIL_MAX_POINTS: 40,
+  TRAIL_OPACITY_BASE: 0.7,
+  CAMERA_FOV_BASE: 95,
+  CAMERA_FOV_EXTRA: 25,
+  CAMERA_DISTANCE_Y: 7,
+  CAMERA_LOOK_OFFSET_Y: 2.5,
+  CAMERA_LERP_FACTOR: 0.5,
+  CHROMATIC_ABERRATION_MAX: 0.015,
+  COUNTDOWN_DURATION: 3.0,
+  
+  // Weapons
+  MISSILE_SPEED_BONUS: 140,
+  MISSILE_LIFE: 5.0,
+  MISSILE_DAMAGE: 30,
+  HAZARD_LIFE: 15.0,
+  HAZARD_DAMAGE: 15,
+  OIL_SPIN_FORCE: 10,
+  
+  // AI
+  AI_BASE_REACTION: 0.4,
+  AI_DIFFICULTY_REACTION_STEP: 0.1,
+  AI_PAD_DETECTION_DIST: 0.08,
+  AI_OBSTACLE_DETECTION_DIST: 0.04
+};
+
+export const DIFFICULTY_SETTINGS = {
+  0: { // NOVICE
+    name: "NOVICE",
+    speedMultiplier: 0.8,
+    damageMultiplier: 0.5,
+    energyRegen: 1.5,
+    aiDiffMult: [0.7, 0.8, 0.9]
+  },
+  1: { // PRO
+    name: "PRO",
+    speedMultiplier: 1.0,
+    damageMultiplier: 1.0,
+    energyRegen: 1.0,
+    aiDiffMult: [0.85, 1.0, 1.15]
+  },
+  2: { // ELITE
+    name: "ELITE",
+    speedMultiplier: 1.25,
+    damageMultiplier: 1.5,
+    energyRegen: 0.7,
+    aiDiffMult: [1.0, 1.2, 1.4]
+  }
+};
+
 export const PILOTS = [
   { id: 0, name: "AXEL RUSH", faction: "HEGEMONY", corporation: "Hegemony Central Command", 
     goal: "Seek a military pardon.", bg: "Axel Rush was once the Hegemony's most decorated interceptor pilot. During the 'Cylinder Riots' of 2022, he refused an order to fire on a civilian habitation zone, a choice that cost him his rank and earned him a life sentence in the Lunar Gulags. But the Hegemony is nothing if not opportunistic. Facing a PR crisis and a lack of skilled pilots for their prestige racing team, they offered Axel a deal: win the 2026 League, and his record is wiped clean. A free man once more, he races with a cold, military precision that masks a growing thrill-seeker's addiction to the G-force.", color: new THREE.Color(0xff0000), 

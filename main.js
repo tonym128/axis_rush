@@ -10,7 +10,9 @@ import {
   PILOTS, 
   VEHICLES, 
   VEHICLE_BASE_STATS, 
-  STAT_MAX 
+  STAT_MAX,
+  GAME_CONFIG,
+  DIFFICULTY_SETTINGS
 } from './constants.js';
 import { 
   EffectComposer, 
@@ -29,7 +31,7 @@ class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(1);
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x000000);
-    this.camera = new THREE.PerspectiveCamera(95, window.innerWidth / window.innerHeight, 0.1, 10000);
+    this.camera = new THREE.PerspectiveCamera(GAME_CONFIG.CAMERA_FOV_BASE, window.innerWidth / window.innerHeight, 0.1, 10000);
     this.minimapCamera = new THREE.PerspectiveCamera(45, 1, 1, 40000);
     this.minimapCamera.layers.set(1); 
     this.composer = new EffectComposer(this.renderer);
@@ -46,14 +48,14 @@ class Game {
     sunLight.position.set(100, 100, 50); 
     sunLight.layers.enable(1);
     this.scene.add(sunLight);
-    this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 1;
+    this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 1; this.carouselIndex = 0;
     this.campaignTrackIndex = 0; this.campaignScores = {};
     // Per-pilot data: { pilotId: { campaign: { inProgress, trackIndex, scores, vehicleId, difficulty }, upgrades: { vehicleType: { speed, handling, armor } } } }
     this.pilotData = {};
     this.player = null; this.ais = []; this.track = null; this.previewTrack = null; this.previewSky = null; this.previewVehicle = null; this.weaponSystem = null;
     this.clock = (THREE.Timer) ? new THREE.Timer() : new THREE.Clock(); 
     this.inputs = { accelerate: false, brake: false, left: false, right: false, switch: false, fire: false, boost: false, rearView: false };
-    this.startCamPos = new THREE.Vector3(); this.countdownTimer = 0; this.countdownTotal = 3.0; this.cameraShakeIntensity = 0;
+    this.startCamPos = new THREE.Vector3(); this.countdownTimer = 0; this.countdownTotal = GAME_CONFIG.COUNTDOWN_DURATION; this.cameraShakeIntensity = 0;
     this.playerLastLap = 1; this.bestLapTimes = {};
     this.ghostDiffTimer = 0;
     this.currentThrottle = 0;
@@ -652,13 +654,21 @@ class Game {
 
     document.getElementById('btn-how').addEventListener('click', () => { this.showScreen('how-to-play'); });
     document.getElementById('btn-how-back').addEventListener('click', () => { this.showMenu(); });
-    document.getElementById('btn-char-next').addEventListener('click', () => { 
+    document.getElementById('btn-char-next-screen').addEventListener('click', () => { 
       const pilotData = this.getPilotData(this.playerPilotId);
       if (this.gameMode === 'CAMPAIGN' && pilotData.campaign.inProgress) {
         this.continueCampaign();
       } else {
         this.showScreen('car-select'); 
       }
+    });
+    document.getElementById('btn-char-prev').addEventListener('click', () => {
+      this.carouselIndex = (this.carouselIndex - 1 + PILOTS.length) % PILOTS.length;
+      this.renderCharList();
+    });
+    document.getElementById('btn-char-next').addEventListener('click', () => {
+      this.carouselIndex = (this.carouselIndex + 1) % PILOTS.length;
+      this.renderCharList();
     });
     document.getElementById('btn-char-back').addEventListener('click', () => { this.showMenu(); });
     const carBtns = document.querySelectorAll('#vehicle-select button');
@@ -757,34 +767,41 @@ class Game {
   renderCharList() {
     const list = document.getElementById('char-list'), info = document.getElementById('char-info'), picContainer = document.getElementById('char-pic-container');
     list.innerHTML = '';
-    PILOTS.forEach((p, idx) => {
+    
+    // Show 5 pilots in a carousel window
+    const visibleCount = 5;
+    for (let i = 0; i < visibleCount; i++) {
+      const pIdx = (this.carouselIndex + i) % PILOTS.length;
+      const p = PILOTS[pIdx];
+      
       const btn = document.createElement('button');
       btn.className = 'char-list-btn';
+      if (p.id === this.playerPilotId) btn.classList.add('selected');
       btn.innerHTML = `<span>${p.name}</span><img src="${p.portrait}" class="char-list-img">`;
-      
-      const updateInfo = () => {
-        const pilotData = this.getPilotData(p.id);
-        const camp = pilotData.campaign;
+
+      const updateInfo = (pilot) => {
+        const pData = this.getPilotData(pilot.id);
+        const camp = pData.campaign;
         let statusHtml = "";
         if (this.gameMode === 'CAMPAIGN') {
           const nextTrack = camp.inProgress ? (MAPS[camp.trackIndex]?.name || "COMPLETE") : "NOT STARTED";
           statusHtml = `
-            <div class="info-box status-viewport">
+            <div class="info-box status-viewport" style="flex:1;">
               <div style="color:#f0f; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">CAMPAIGN STATUS</div>
               <div style="font-size:0.9rem;">PROGRESS: ${camp.inProgress ? `${camp.trackIndex+1}/${MAPS.length}` : '0/10'}</div>
               <div style="font-size:0.9rem;">NEXT: ${nextTrack}</div>
             </div>
           `;
-          
-          const nextBtn = document.getElementById('btn-char-next');
+
+          const nextBtn = document.getElementById('btn-char-next-screen');
           if (nextBtn) {
             nextBtn.innerText = camp.inProgress ? "CONTINUE CAMPAIGN" : "START NEW CAMPAIGN";
           }
         }
 
-        const upg0 = pilotData.upgrades[0], upg1 = pilotData.upgrades[1], upg2 = pilotData.upgrades[2];
+        const upg0 = pData.upgrades[0], upg1 = pData.upgrades[1], upg2 = pData.upgrades[2];
         const upgHtml = `
-          <div class="info-box upgrades-viewport">
+          <div class="info-box upgrades-viewport" style="flex:1;">
             <div style="color:#0ff; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">INSTALLED UPGRADES</div>
             <div style="font-size:0.7rem; color:#aaa; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
               <div>L: S${upg0.speed} H${upg0.handling} A${upg0.armor}</div>
@@ -795,20 +812,29 @@ class Game {
         `;
 
         info.innerHTML = `
-          <div class="info-box story-viewport">
-            <div style="color:${p.color.getStyle()}; font-weight:bold; margin-bottom:5px;">${p.faction}</div>
-            <div style="font-size:0.9rem; margin-bottom:10px; line-height:1.4; text-align:left; max-height:120px; overflow-y:auto;">${p.bg}</div>
-            <div style="font-style:italic; color:#aaa; font-size:0.8rem;">GOAL: ${p.goal}</div>
+          <div class="info-box story-viewport" style="max-width: none; margin: 0;">
+            <div style="color:${pilot.color.getStyle()}; font-weight:bold; margin-bottom:10px; font-size: 1.2rem;">${pilot.faction}</div>
+            <div style="font-size:1rem; margin-bottom:15px; line-height:1.6; text-align:left; flex: 1; overflow-y:auto; padding-right: 10px;">${pilot.bg}</div>
+            <div style="font-style:italic; color:#ff0; font-size:0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">GOAL: ${pilot.goal}</div>
           </div>
-          ${statusHtml}
-          ${upgHtml}
+          <div style="display:flex; gap:10px; width:100%; justify-content:center;">
+            ${statusHtml}
+            ${upgHtml}
+          </div>
         `;
-        picContainer.innerHTML = `<img src="${p.portrait}">`;
+        picContainer.innerHTML = `<img src="${pilot.portrait}">`;
       };
-      if (p.id === this.playerPilotId) { btn.classList.add('selected'); updateInfo(); }
-      btn.addEventListener('click', () => { document.querySelectorAll('#char-list button').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.playerPilotId = p.id; updateInfo(); });
+      
+      btn.addEventListener('click', () => { 
+        document.querySelectorAll('#char-list button').forEach(b => b.classList.remove('selected')); 
+        btn.classList.add('selected'); 
+        this.playerPilotId = p.id; 
+        updateInfo(p); 
+      });
+      
       list.appendChild(btn);
-    });
+      if (p.id === this.playerPilotId) updateInfo(p);
+    }
   }
 
   renderMapList() {
@@ -1100,7 +1126,12 @@ class Game {
       pilotData.campaign.inProgress = false;
       this.saveData();
     }
-    else { title.innerText = `NEXT: ${MAPS[this.campaignTrackIndex].name} (${this.campaignTrackIndex + 1}/${MAPS.length})`; document.getElementById('btn-league-next').innerText = "START RACE"; }
+    else { 
+      const campaign = this.getPilotData(this.playerPilotId).campaign;
+      this.difficulty = campaign.difficulty !== undefined ? campaign.difficulty : 1;
+      title.innerText = `NEXT: ${MAPS[this.campaignTrackIndex].name} (${this.campaignTrackIndex + 1}/${MAPS.length})`; 
+      document.getElementById('btn-league-next').innerText = "START RACE"; 
+    }
     const list = document.getElementById('standings-list'); list.innerHTML = '';
     const sortedIds = Object.keys(this.campaignScores).sort((a,b) => this.campaignScores[b] - this.campaignScores[a]);
     sortedIds.forEach((idStr, idx) => {
@@ -1126,7 +1157,7 @@ class Game {
     this.track = new Track(this.scene, this.mapType);
     this.weaponSystem = new WeaponSystem(this.scene, this.track);
     const pilotData = this.getPilotData(this.playerPilotId);
-    this.player = new Vehicle(this.scene, this.vehicleType, true, PILOTS[this.playerPilotId], pilotData.upgrades[this.vehicleType]);
+    this.player = new Vehicle(this.scene, this.vehicleType, true, PILOTS[this.playerPilotId], pilotData.upgrades[this.vehicleType], this.difficulty);
     this.player.minimapMarker.layers.set(1);
     this.player._lapStartTime = performance.now(); // Will be reset at GO!
     this.player._lastRecordedLap = 1;
@@ -1575,11 +1606,15 @@ class Game {
                 msg.innerText = "GO!"; 
                 if (isPerfect) {
                   msg.innerHTML = "GO!<br><span style='color:#ff0; font-size:2rem;'>PERFECT START!!</span>";
-                  if (this.player) { this.player.speed = 280; this.player.bonusSpeed = 100; }
+                  const speedMult = DIFFICULTY_SETTINGS[this.difficulty].speedMultiplier;
+                  if (this.player) { 
+                    this.player.speed = 280 * speedMult; 
+                    this.player.bonusSpeed = 100; 
+                  }
                   } else if (isGood) {
                   msg.innerHTML = "GO!<br><span style='color:#0ff; font-size:1.5rem;'>GOOD START</span>";
-                  if (this.player) { this.player.speed = 140; }
-
+                  const speedMult = DIFFICULTY_SETTINGS[this.difficulty].speedMultiplier;
+                  if (this.player) { this.player.speed = 140 * speedMult; }
                 }
                 setTimeout(() => { if (msg.innerText.startsWith("GO")) msg.innerText = ""; }, 1000);
               }
@@ -1715,25 +1750,25 @@ class Game {
         for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
         this.weaponSystem.update(dt, allRacers);
       }
-      const speedFactor = this.player ? Math.max(0, (this.player.speed - 140) / 245) : 0;
-      this.chromaticEffect.offset.set(speedFactor * 0.015, speedFactor * 0.015);
-      this.camera.fov = 95 + speedFactor * 25; this.camera.updateProjectionMatrix();
+      const speedFactor = this.player ? Math.max(0, (this.player.speed - this.player.maxSpeed * 0.5) / (this.player.maxSpeed * 0.8)) : 0;
+      this.chromaticEffect.offset.set(speedFactor * GAME_CONFIG.CHROMATIC_ABERRATION_MAX, speedFactor * GAME_CONFIG.CHROMATIC_ABERRATION_MAX);
+      this.camera.fov = GAME_CONFIG.CAMERA_FOV_BASE + speedFactor * GAME_CONFIG.CAMERA_FOV_EXTRA; this.camera.updateProjectionMatrix();
       const tOffset = this.inputs.rearView ? 0.005 : -0.001;
       const camFrame = this.track.getFrameAt(this.player.t + tOffset); 
       const targetCamPos = new THREE.Vector3().copy(camFrame.point);
       const camNormal = new THREE.Vector3().copy(camFrame.normal).applyAxisAngle(camFrame.tangent, this.player.angle);
-      let camR = this.track.radius + (this.player.sideFactor * 7); targetCamPos.add(camNormal.multiplyScalar(camR));
+      let camR = this.track.radius + (this.player.sideFactor * GAME_CONFIG.CAMERA_DISTANCE_Y); targetCamPos.add(camNormal.multiplyScalar(camR));
       let lookT = this.inputs.rearView ? -0.05 : 0.02;
       const lookFrame = this.track.getFrameAt(this.player.t + lookT);
       const lookPos = new THREE.Vector3().copy(lookFrame.point);
       const lookNormal = new THREE.Vector3().copy(lookFrame.normal).applyAxisAngle(lookFrame.tangent, this.player.angle);
-      let lookR = this.track.radius + (this.player.sideFactor * 2.5); lookPos.add(lookNormal.multiplyScalar(lookR));
+      let lookR = this.track.radius + (this.player.sideFactor * GAME_CONFIG.CAMERA_LOOK_OFFSET_Y); lookPos.add(lookNormal.multiplyScalar(lookR));
       if (this.state === 'STARTING') {
         const progress = 1.0 - Math.max(0, this.countdownTimer / this.countdownTotal), ease = 1.0 - Math.pow(1.0 - progress, 3);
         this.camera.position.lerpVectors(this.startCamPos, targetCamPos, ease);
         this.camera.lookAt(lookPos); this.camera.up.lerp(this.player.mesh.up, ease);
       } else {
-        this.camera.position.copy(targetCamPos); this.camera.up.lerp(this.player.mesh.up, 0.5);
+        this.camera.position.copy(targetCamPos); this.camera.up.lerp(this.player.mesh.up, GAME_CONFIG.CAMERA_LERP_FACTOR);
         if (this.cameraShakeIntensity > 0) {
           this.cameraShakeIntensity -= dt * 2.0;
           const shake = new THREE.Vector3((Math.random() - 0.5) * this.cameraShakeIntensity * 2.0, (Math.random() - 0.5) * this.cameraShakeIntensity * 2.0, (Math.random() - 0.5) * this.cameraShakeIntensity * 2.0);
@@ -1831,7 +1866,7 @@ class Game {
       <div style="color:#0ff; font-weight:bold; margin-bottom:5px;">RACE CONFIGURATION</div>
       <div style="color:#0ff;">MODE: ${config.mode}</div>
       <div style="color:#0ff;">TRACK: ${MAPS[config.mapIndex].name}</div>
-      <div style="color:#0ff;">DIFFICULTY: ${['NOVICE','PRO','ELITE'][config.difficulty]}</div>
+      <div style="color:#0ff;">DIFFICULTY: ${DIFFICULTY_SETTINGS[config.difficulty].name}</div>
       <div style="color:#0ff;">AI RACERS: ${config.useAI ? 'ON' : 'OFF'}</div>
     `;
 

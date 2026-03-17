@@ -66,7 +66,7 @@ export class AudioEngine {
     this.measureCount = 0;
     
     if (mode === 'menu') {
-      this.tempo = 60; // Very slow and ambient
+      this.tempo = 90; // Slightly faster, but still chill
     } else {
       // Race mode: vary tempo slightly by track and difficulty
       this.tempo = 140 + (difficulty * 15) + (trackIndex % 3) * 5;
@@ -87,26 +87,31 @@ export class AudioEngine {
   updatePatterns() {
     if (this.mode === 'menu') {
       const m = this.measureCount % 4;
-      // Very sparse kick, only on first beat of every 2nd measure
-      this.kickPattern = (m % 2 === 0) ? [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-      // Soft pulsing hats
-      this.hatPattern = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+      // Subtle pulsing kick
+      this.kickPattern = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0];
+      // Consistent pulsing hats
+      this.hatPattern = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1];
       this.snarePattern = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       
-      // Ethereal arpeggio
-      this.bassPattern = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0];
+      // More active ethereal arpeggio
+      this.bassPattern = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0];
       const scales = [
-        [48, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 60, 0, 0, 0],
-        [48, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 60, 0, 0, 0],
-        [46, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 58, 0, 0, 0],
-        [44, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 56, 0, 0, 0]
+        [48, 0, 55, 0, 60, 0, 55, 0, 48, 0, 55, 0, 60, 0, 55, 0],
+        [48, 0, 56, 0, 60, 0, 56, 0, 48, 0, 56, 0, 60, 0, 56, 0],
+        [46, 0, 53, 0, 58, 0, 53, 0, 46, 0, 53, 0, 58, 0, 53, 0],
+        [44, 0, 51, 0, 56, 0, 51, 0, 44, 0, 51, 0, 56, 0, 51, 0]
       ];
       this.bassNotes = scales[m];
 
-      // Sparse, slow melody
-      this.leadPattern = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-      const melody = [72, 74, 75, 79]; // C5, D5, Eb5, G5
-      this.leadNotes = [0, 0, 0, 0, melody[m], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      // More frequent melodic blips
+      this.leadPattern = [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0];
+      const melodies = [
+        [0, 0, 0, 0, 72, 0, 0, 74, 0, 0, 0, 0, 75, 0, 79, 0],
+        [0, 0, 0, 0, 72, 0, 0, 75, 0, 0, 0, 0, 77, 0, 80, 0],
+        [0, 0, 0, 0, 70, 0, 0, 72, 0, 0, 0, 0, 74, 0, 77, 0],
+        [0, 0, 0, 0, 68, 0, 0, 70, 0, 0, 0, 0, 72, 0, 75, 0]
+      ];
+      this.leadNotes = melodies[m];
       return;
     }
 

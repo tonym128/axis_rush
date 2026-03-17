@@ -261,18 +261,23 @@
       <!-- Character Select -->
       <div id="char-select" class="screen">
         <h2>SELECT PILOT</h2>
-        <div class="char-selection-layout">
-          <div class="menu-section">
-            <div class="list-container" id="char-list"></div>
-          </div>
+        
+        <div id="char-carousel-container">
+          <button id="btn-char-prev" class="carousel-nav-btn">&lt;</button>
+          <div id="char-list"></div>
+          <button id="btn-char-next" class="carousel-nav-btn">&gt;</button>
+        </div>
+
+        <div id="char-details-area">
           <div class="char-preview-panel">
             <div id="char-pic-container"></div>
-            <div id="char-info" class="info-box"></div>
           </div>
+          <div id="char-info"></div>
         </div>
+
         <div class="button-group">
           <button id="btn-char-back">BACK</button>
-          <button id="btn-char-next" class="selected">NEXT: VEHICLE</button>
+          <button id="btn-char-next-screen" class="selected">NEXT: VEHICLE</button>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_CONFIG } from './constants.js';
 
 export class WeaponSystem {
   constructor(scene, track) {
@@ -29,8 +30,8 @@ export class WeaponSystem {
       t: owner.t,
       angle: owner.angle,
       sideFactor: owner.targetSideFactor,
-      speed: owner.speed + 140,
-      life: 5.0,
+      speed: owner.speed + GAME_CONFIG.MISSILE_SPEED_BONUS,
+      life: GAME_CONFIG.MISSILE_LIFE,
       boundingBox: new THREE.Box3()
     });
     this.scene.add(mesh);
@@ -59,7 +60,7 @@ export class WeaponSystem {
       t: owner.t,
       angle: owner.angle,
       sideFactor: owner.targetSideFactor,
-      life: 15.0,
+      life: GAME_CONFIG.HAZARD_LIFE,
       boundingBox: new THREE.Box3().setFromObject(mesh)
     });
     this.scene.add(mesh);
@@ -71,8 +72,7 @@ export class WeaponSystem {
       const p = this.projectiles[i];
       p.life -= dt;
       
-      const trackLength = 12000;
-      p.t += (p.speed * dt) / trackLength;
+      p.t += (p.speed * dt) / GAME_CONFIG.TRACK_TOTAL_LENGTH;
       
       if (p.life <= 0 || p.t >= 1.0) {
         this.scene.remove(p.mesh);
@@ -80,7 +80,6 @@ export class WeaponSystem {
         continue;
       }
 
-      // Update transform
       const frame = this.track.getFrameAt(p.t);
       const crossNormal = new THREE.Vector3().copy(frame.normal).applyAxisAngle(frame.tangent, p.angle);
       let r = this.track.radius + (p.sideFactor * 2.0);
@@ -89,15 +88,14 @@ export class WeaponSystem {
       p.mesh.lookAt(pos.clone().add(frame.tangent));
       p.boundingBox.setFromObject(p.mesh);
 
-      // Check hits
       for (const racer of racers) {
         if (racer === p.owner || racer.isExploded) continue;
         if ((racer.sideFactor > 0) !== (p.sideFactor > 0)) continue;
         
         if (p.boundingBox.intersectsBox(racer.boundingBox)) {
-          racer.takeDamage(30, p.owner, racers);
+          racer.takeDamage(GAME_CONFIG.MISSILE_DAMAGE, p.owner, racers);
           racer.speed *= 0.5;
-          p.life = 0; // Destroy missile
+          p.life = 0; 
           break;
         }
       }
@@ -113,21 +111,19 @@ export class WeaponSystem {
         continue;
       }
 
-      // Check hits
       for (const racer of racers) {
         if (racer.isExploded) continue;
         if ((racer.sideFactor > 0) !== (h.sideFactor > 0)) continue;
         
-        // Don't hit the owner immediately after dropping
         const tDiff = Math.abs(racer.t - h.t);
         if (racer === h.owner && tDiff < 0.005) continue;
         
         if (h.boundingBox.intersectsBox(racer.boundingBox)) {
           if (h.type === 'oil') {
-            racer.angularVelocity += (Math.random() - 0.5) * 10; // Spin out
+            racer.angularVelocity += (Math.random() - 0.5) * GAME_CONFIG.OIL_SPIN_FORCE; 
             racer.speed *= 0.8;
           } else {
-            racer.takeDamage(15, h.owner, racers);
+            racer.takeDamage(GAME_CONFIG.HAZARD_DAMAGE, h.owner, racers);
             racer.speed *= 0.4;
           }
           this.scene.remove(h.mesh);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { textureManager } from './textures.js';
+import { GAME_CONFIG } from './constants.js';
 
 export const MAPS = [
   { name: "Neon Tube", diff: "Easy", desc: "A simple loop to learn the ropes.", words: "neon grid cyber", bgWords: "dark blue grid neon" },
@@ -46,9 +47,9 @@ export class Track {
   constructor(scene, mapType) {
     this.scene = scene;
     this.mapType = mapType;
-    this.radius = 20;
-    this.segments = 400; 
-    this.radialSegments = 16; 
+    this.radius = GAME_CONFIG.TRACK_RADIUS;
+    this.segments = GAME_CONFIG.TRACK_SEGMENTS; 
+    this.radialSegments = GAME_CONFIG.TRACK_RADIAL_SEGMENTS; 
     this.container = new THREE.Group();
     this.scene.add(this.container);
     
