@@ -157,7 +157,7 @@ export class NetworkManager {
         pilotId: pilotId,
         vehicleId: vehicleId,
         isHost: true,
-        ready: true
+        ready: false
       };
       
       // Announce host to MQTT
@@ -201,7 +201,7 @@ export class NetworkManager {
       this.hostConnection.on('open', () => {
         this.sendData({
           type: 'JOIN_LOBBY',
-          player: { name: playerName, pilotId, vehicleId, ready: true }
+          player: { name: playerName, pilotId, vehicleId, ready: false }
         }, this.hostConnection);
       });
       this.hostConnection.on('data', (data) => {
@@ -217,6 +217,18 @@ export class NetworkManager {
         alert('Connection error');
       });
     });
+  }
+
+  toggleReady() {
+    if (this.isHost) {
+      this.players[this.myId].ready = !this.players[this.myId].ready;
+      this.broadcastLobbyState();
+    } else if (this.hostConnection && this.hostConnection.open) {
+      const myPlayer = this.players[this.myId];
+      if (myPlayer) {
+        this.sendData({ type: 'TOGGLE_READY' }, this.hostConnection);
+      }
+    }
   }
 
   // --- MESSAGING ---
@@ -243,6 +255,14 @@ export class NetworkManager {
 
   startGameHost() {
     if (!this.isHost) return;
+    
+    // Check if everyone is ready
+    const allReady = Object.values(this.players).every(p => p.ready);
+    if (!allReady) {
+      alert('Cannot start race: Not all players are ready!');
+      return;
+    }
+
     clearInterval(this.announceInterval);
     const msg = {
       type: 'START_GAME',
@@ -269,6 +289,11 @@ export class NetworkManager {
     } else if (data.type === 'JOIN_LOBBY') {
       this.players[peerId] = { ...data.player, id: peerId, isHost: false };
       this.broadcastLobbyState();
+    } else if (data.type === 'TOGGLE_READY') {
+      if (this.players[peerId]) {
+        this.players[peerId].ready = !this.players[peerId].ready;
+        this.broadcastLobbyState();
+      }
     } else if (data.type === 'INPUT') {
       if (this.game.remoteInputs) {
         this.game.remoteInputs[peerId] = data.inputs;

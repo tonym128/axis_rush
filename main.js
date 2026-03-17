@@ -511,7 +511,11 @@ class Game {
     document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('char-select'); this.renderCharList(); });
 
     // Multiplayer Menu Buttons
-    document.getElementById('btn-mp-back').addEventListener('click', () => { this.showMenu(); });
+    document.getElementById('btn-mp-back').addEventListener('click', () => { 
+      if (this.network.isHost) this.network.stopHost();
+      else if (this.network.hostConnection) this.network.hostConnection.close();
+      this.showMenu(); 
+    });
     document.getElementById('btn-host-setup').addEventListener('click', () => { this.showScreen('host-setup'); });
     
     document.getElementById('host-mode').addEventListener('change', (e) => {
@@ -550,6 +554,10 @@ class Game {
     });
     document.getElementById('btn-lobby-start').addEventListener('click', () => {
       this.network.startGameHost();
+    });
+
+    document.getElementById('btn-lobby-ready').addEventListener('click', () => {
+      this.network.toggleReady();
     });
 
     const updateHostLobbyConfig = () => {
@@ -1148,28 +1156,7 @@ class Game {
   }
   
   async runCountdown() {
-    const msg = document.getElementById('message-display');
-    msg.innerText = "3"; await new Promise(r => setTimeout(r, 1000));
-    msg.innerText = "2"; await new Promise(r => setTimeout(r, 1000));
-    msg.innerText = "1"; await new Promise(r => setTimeout(r, 1000));
-    
-    const isPerfect = this.currentThrottle >= 0.8 && this.currentThrottle <= 0.9;
-    const isGood = this.currentThrottle > 0.5 && !isPerfect;
-
-    msg.innerText = "GO!"; 
-    if (isPerfect) {
-      msg.innerHTML = "GO!<br><span style='color:#ff0; font-size:2rem;'>PERFECT START!!</span>";
-      this.player.speed = 400;
-      this.player.bonusSpeed = 200;
-    } else if (isGood) {
-      msg.innerHTML = "GO!<br><span style='color:#0ff; font-size:1.5rem;'>GOOD START</span>";
-      this.player.speed = 200;
-    }
-
-    this.state = 'RACING'; this.lapStartTime = performance.now(); this.currentLapStartTime = this.lapStartTime; this.playerLastLap = 1;
-    this.player._lapStartTime = this.lapStartTime;
-    this.ais.forEach(ai => ai._lapStartTime = this.lapStartTime);
-    setTimeout(() => msg.innerText = "", 1000);
+    // Synchronized countdown is now handled within the update() loop.
   }
   
   onPlayerLapComplete(lapTime, lapNumber) {
@@ -1405,7 +1392,18 @@ class Game {
     }
     this.saveData();
 
-    this.showScreen('game-over');
+    if (this.gameMode === 'MULTIPLAYER') {
+      setTimeout(() => {
+        // Reset ready status for next race
+        for (let id in this.network.players) {
+          this.network.players[id].ready = false;
+        }
+        this.updateLobbyUI();
+        this.state = 'LOBBY';
+      }, 5000); // Give 5 seconds to see results
+    } else {
+      this.showScreen('game-over');
+    }
     document.getElementById('go-title').innerText = playerRank === 1 ? "VICTORY!" : "RACE FINISHED";
     
     let lapStats = "LAP TIMES:\n";
@@ -1471,38 +1469,92 @@ class Game {
       if (this.inputs.accelerate) this.currentThrottle = Math.min(1.0, this.currentThrottle + dt * 1.5);
       else this.currentThrottle = Math.max(0.0, this.currentThrottle - dt * 2.0);
 
+      if (this.state === 'STARTING') {
+        const prevSec = Math.ceil(this.countdownTimer);
+        if (this.gameMode !== 'MULTIPLAYER' || this.network.isHost) {
+          this.countdownTimer -= dt;
+        }
+        const currSec = Math.ceil(this.countdownTimer);
+        const msg = document.getElementById('message-display');
+        if (msg) {
+          if (prevSec !== currSec && currSec > 0) {
+            msg.innerText = currSec;
+          } else if (msg.innerText === "" && currSec > 0) {
+            msg.innerText = currSec; // Fallback initialization
+          }
+        }
+      }
+
       if (this.state === 'RACING' || this.state === 'STARTING') {
         if (this.gameMode === 'MULTIPLAYER' && !this.network.isHost) {
           this.network.sendInput(this.inputs);
+          
+          if (this.player) this.player.update(0, this.track, { accelerate: false }, allRacers, spawnFn);
+          for (const ai of this.ais) {
+            if (ai) ai.update(0, this.track, this.player, allRacers, spawnFn);
+          }
         } else {
           // Host or Single Player
           if (this.state === 'RACING') {
-            this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
-          } else {
-            this.player.update(0, this.track, { accelerate: false }, allRacers, spawnFn);
-          }
-          
-          if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
-            for (let id in this.remoteInputs) {
-              if (this.mpPlayers[id] && id !== this.network.myId) {
-                if (this.state === 'RACING') {
+            if (this.player) this.player.update(dt, this.track, this.inputs, allRacers, spawnFn);
+            
+            if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
+              for (let id in this.remoteInputs) {
+                if (this.mpPlayers[id] && id !== this.network.myId) {
                   this.mpPlayers[id].update(dt, this.track, this.remoteInputs[id], allRacers, spawnFn);
-                } else {
+                }
+              }
+            }
+            
+            for (const ai of this.ais) {
+              if (ai) ai.update(dt, this.track, this.player, allRacers, spawnFn);
+            }
+            this.updateRanks(allRacers);
+          } else {
+            // Starting state
+            if (this.player) this.player.update(0, this.track, { accelerate: false }, allRacers, spawnFn);
+            if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
+              for (let id in this.remoteInputs) {
+                if (this.mpPlayers[id] && id !== this.network.myId) {
                   this.mpPlayers[id].update(0, this.track, { accelerate: false }, allRacers, spawnFn);
                 }
+              }
+            }
+            for (const ai of this.ais) {
+              if (ai) ai.update(0, this.track, this.player, allRacers, spawnFn);
+            }
+
+            if (this.countdownTimer <= 0) {
+              this.state = 'RACING';
+              this.lapStartTime = performance.now();
+              this.currentLapStartTime = this.lapStartTime;
+              if (this.player) {
+                this.player._lapStartTime = this.lapStartTime;
+                this.player._lastRecordedLap = 1;
+              }
+              this.ais.forEach(ai => { 
+                if (ai) { ai._lapStartTime = this.lapStartTime; ai._lastRecordedLap = 1; }
+              });
+              
+              const isPerfect = this.currentThrottle >= 0.8 && this.currentThrottle <= 0.9;
+              const isGood = this.currentThrottle > 0.5 && !isPerfect;
+
+              const msg = document.getElementById('message-display');
+              if (msg) {
+                msg.innerText = "GO!"; 
+                if (isPerfect) {
+                  msg.innerHTML = "GO!<br><span style='color:#ff0; font-size:2rem;'>PERFECT START!!</span>";
+                  if (this.player) { this.player.speed = 400; this.player.bonusSpeed = 200; }
+                } else if (isGood) {
+                  msg.innerHTML = "GO!<br><span style='color:#0ff; font-size:1.5rem;'>GOOD START</span>";
+                  if (this.player) { this.player.speed = 200; }
+                }
+                setTimeout(() => { if (msg.innerText.startsWith("GO")) msg.innerText = ""; }, 1000);
               }
             }
           }
 
           if (this.state === 'RACING') {
-            for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
-            this.updateRanks(allRacers);
-          } else {
-            for (const ai of this.ais) ai.update(0, this.track, this.player, allRacers, spawnFn);
-          }
-
-          if (this.state === 'RACING') {
-            // Lap recording
             const now = performance.now();
             allRacers.forEach(r => {
               if (r.lap > r._lastRecordedLap) {
@@ -1516,19 +1568,23 @@ class Game {
           }
 
           if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
-            const state = { mp: {}, ai: [] };
+            const state = { 
+              mp: {}, 
+              ai: [],
+              st: this.state,
+              ct: this.countdownTimer,
+              rt: this.state === 'RACING' ? (performance.now() - this.lapStartTime) : 0
+            };
             for (let id in this.mpPlayers) {
               const v = this.mpPlayers[id];
-              state.mp[id] = { t: v.t, a: v.angle, s: v.speed, sf: v.sideFactor, r: v.rank, l: v.lap };
+              if (v) state.mp[id] = { t: v.t, a: v.angle, s: v.speed, sf: v.sideFactor, r: v.rank, l: v.lap };
             }
             this.ais.forEach(ai => {
-              state.ai.push({ p: ai.pilot.id, t: ai.t, a: ai.angle, s: ai.speed, sf: ai.sideFactor, r: ai.rank, l: ai.lap });
+              if (ai) state.ai.push({ p: ai.pilot.id, t: ai.t, a: ai.angle, s: ai.speed, sf: ai.sideFactor, r: ai.rank, l: ai.lap });
             });
             this.network.broadcastGameState(state);
           }
         }
-
-        if (this.state === 'STARTING') this.countdownTimer -= dt;
 
         this.weaponSystem.update(dt, allRacers);
         if (this.player.cameraShakeRequest > 0) { this.cameraShakeIntensity = Math.max(this.cameraShakeIntensity, this.player.cameraShakeRequest); this.player.cameraShakeRequest = 0; }
@@ -1704,10 +1760,21 @@ class Game {
     this.showScreen('mp-lobby');
     const list = document.getElementById('lobby-players-list');
     list.innerHTML = '';
+
+    let allReady = true;
     Object.values(this.network.players).forEach(p => {
-      list.innerHTML += `<div style="padding:10px; background:#111; border:1px solid #0f0; color:#0f0;">${p.name} (Pilot: ${PILOTS[p.pilotId].name}) ${p.isHost ? '[HOST]' : ''}</div>`;
+      const statusColor = p.ready ? '#0f0' : '#f00';
+      const statusText = p.ready ? 'READY' : 'WAITING';
+      if (!p.ready) allReady = false;
+
+      list.innerHTML += `
+        <div style="padding:10px; background:#111; border:1px solid ${statusColor}; color:${statusColor}; display:flex; justify-content:space-between; align-items:center;">
+          <span>${p.name} (Pilot: ${PILOTS[p.pilotId].name}) ${p.isHost ? '[HOST]' : ''}</span>
+          <span style="font-weight:bold; font-size:0.8rem;">${statusText}</span>
+        </div>
+      `;
     });
-    
+
     const config = this.network.hostConfig;
     document.getElementById('lobby-config-info').innerHTML = `
       <div style="color:#0ff; font-weight:bold; margin-bottom:5px;">RACE CONFIGURATION</div>
@@ -1719,11 +1786,21 @@ class Game {
 
     const hostControls = document.getElementById('host-lobby-controls');
     const startBtn = document.getElementById('btn-lobby-start');
-    
+    const readyBtn = document.getElementById('btn-lobby-ready');
+
+    const myPlayer = this.network.players[this.network.myId];
+    if (myPlayer) {
+      readyBtn.innerText = myPlayer.ready ? 'CANCEL READY' : 'READY UP';
+      readyBtn.style.color = myPlayer.ready ? '#f00' : '#ff0';
+      readyBtn.style.borderColor = myPlayer.ready ? '#f00' : '#ff0';
+    }
+
     if (this.network.isHost) {
       hostControls.style.display = 'flex';
       startBtn.style.display = 'block';
-      
+      startBtn.disabled = !allReady;
+      startBtn.style.opacity = allReady ? '1' : '0.5';
+
       // Sync UI to model (in case of re-entry)
       document.getElementById('lobby-mode').value = config.mode;
       document.getElementById('lobby-track').value = config.mapIndex;
@@ -1735,7 +1812,6 @@ class Game {
       startBtn.style.display = 'none';
     }
   }
-
   startMultiplayerRace(players, config) {
     this.gameMode = 'MULTIPLAYER';
     this.mapType = config.mapIndex;
@@ -1779,12 +1855,46 @@ class Game {
     const skyGeo = new THREE.SphereGeometry(5000, 32, 32);
     const skyMat = textureManager.getBasicMaterial(MAPS[this.mapType].bgWords, { side: THREE.BackSide, fog: false });
     const sky = new THREE.Mesh(skyGeo, skyMat); this.scene.add(sky);
+    
+    // Initialize countdown display
+    const msg = document.getElementById('message-display');
+    if (msg) msg.innerText = "3";
+    
     audioEngine.setMode('race', this.mapType, config.difficulty); audioEngine.start(); this.runCountdown();
   }
 
   applyNetworkState(state) {
-    if (this.state !== 'RACING' && this.state !== 'STARTING') return;
+    if (this.state !== 'RACING' && this.state !== 'STARTING' && this.state !== 'FINISHED') return;
     
+    // Sync Game State
+    if (state.st && this.state !== state.st) {
+      const oldState = this.state;
+      this.state = state.st;
+      if (oldState === 'STARTING' && this.state === 'RACING') {
+        const msg = document.getElementById('message-display');
+        if (msg) {
+          msg.innerText = "GO!";
+          setTimeout(() => { if (msg.innerText === "GO!") msg.innerText = ""; }, 1000);
+        }
+        this.lapStartTime = performance.now() - (state.rt || 0);
+      }
+    }
+
+    if (this.state === 'STARTING' && state.ct !== undefined) {
+      const prevSec = Math.ceil(this.countdownTimer);
+      this.countdownTimer = state.ct;
+      const currSec = Math.ceil(this.countdownTimer);
+      const msg = document.getElementById('message-display');
+      if (msg && prevSec !== currSec && currSec > 0) {
+        msg.innerText = currSec;
+      }
+    }
+
+    if (this.state === 'RACING' && state.rt !== undefined) {
+      // Periodic sync of race clock to avoid drift
+      this.lapStartTime = performance.now() - state.rt;
+    }
+
     if (state.mp) {
       for (let id in state.mp) {
         if (this.mpPlayers[id]) {

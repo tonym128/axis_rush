@@ -360,7 +360,11 @@ export class Vehicle {
     const labelPos = pos.clone().add(groupUp.clone().multiplyScalar(10)); this.rankLabel.position.copy(labelPos);
     const numPos = pos.clone().add(groupUp.clone().multiplyScalar(-5)); this.numberLabel.position.copy(numPos);
     this.minimapMarker.position.copy(pos); this.updateTrail(); this.updateBlurLines(); this.flashShield(dt); this.updateInvulnerability(dt);
-    this.checkCollisions(track, otherRacers); this.checkVehicleCollisions(otherRacers, dt);
+    
+    if (dt > 0) {
+      this.checkCollisions(track, otherRacers); this.checkVehicleCollisions(otherRacers, dt);
+    }
+    
     if (this.energy <= 0 && !this.isExploded) this.explode();
   }
 
