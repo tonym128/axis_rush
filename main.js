@@ -57,6 +57,7 @@ class Game {
     this.playerLastLap = 1; this.bestLapTimes = {};
     this.ghostDiffTimer = 0;
     this.currentThrottle = 0;
+    this.lastTimetableSync = 0;
     this.focusedElement = null;
     this.network = new NetworkManager(this);
     this.remoteInputs = {};
@@ -1283,7 +1284,6 @@ class Game {
     }
 
     const lb = document.getElementById('hud-leaderboard'); lb.innerHTML = '';
-    const currentTime = ((performance.now() - this.lapStartTime) / 1000).toFixed(2);
     
     // Header for timetable
     const header = document.createElement('div');
@@ -1294,14 +1294,27 @@ class Game {
     lb.appendChild(header);
 
     allRacers.forEach((r, idx) => {
-      const row = document.createElement('div'); row.className = 'lb-row'; if (r.isPlayer) row.classList.add('player');
+      const row = document.createElement('div'); row.className = 'lb-row'; 
+      if (r.isPlayer) row.classList.add('player');
+      else if (r.isHuman) row.style.color = '#0f0'; // Green for other human players
       
       let infoText = "";
       if (r.isPlayer) {
-        infoText = `${currentTime}s`;
+        const myTotalTime = this.player.totalTime || 0;
+        const currentLapTime = performance.now() - this.lapStartTime;
+        infoText = `${((myTotalTime + currentLapTime) / 1000).toFixed(2)}s`;
       } else {
-        const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
-        infoText = gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`;
+        // For remote players/AI, use host-synced time if available
+        if (r.totalTime !== undefined && r.totalTime > 0) {
+          const myTotalTime = this.player.totalTime || 0;
+          const currentLapTime = performance.now() - this.lapStartTime;
+          const gap = (r.totalTime - (myTotalTime + currentLapTime)) / 1000;
+          infoText = gap > 0 ? `+${gap.toFixed(2)}s` : `${gap.toFixed(2)}s`;
+        } else {
+          // Fallback to distance-based gap estimation
+          const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
+          infoText = gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`;
+        }
       }
       
       row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${infoText}</span>`; 
@@ -1560,6 +1573,7 @@ class Game {
               if (r.lap > r._lastRecordedLap) {
                 const time = now - r._lapStartTime;
                 r.lapTimes.push(time);
+                r.totalTime = r.lapTimes.reduce((a, b) => a + b, 0);
                 r._lapStartTime = now;
                 r._lastRecordedLap = r.lap;
                 if (r === this.player) this.onPlayerLapComplete(time, r.lap - 1);
@@ -1568,19 +1582,36 @@ class Game {
           }
 
           if (this.gameMode === 'MULTIPLAYER' && this.network.isHost) {
+            const now = performance.now();
+            const syncTimetable = (now - this.lastTimetableSync) > 1000;
+            if (syncTimetable) this.lastTimetableSync = now;
+
             const state = { 
               mp: {}, 
               ai: [],
               st: this.state,
               ct: this.countdownTimer,
-              rt: this.state === 'RACING' ? (performance.now() - this.lapStartTime) : 0
+              rt: this.state === 'RACING' ? (now - this.lapStartTime) : 0
             };
             for (let id in this.mpPlayers) {
               const v = this.mpPlayers[id];
-              if (v) state.mp[id] = { t: v.t, a: v.angle, s: v.speed, sf: v.sideFactor, r: v.rank, l: v.lap };
+              if (v) {
+                state.mp[id] = { t: v.t, a: v.angle, s: v.speed, sf: v.sideFactor, r: v.rank, l: v.lap };
+                if (syncTimetable) {
+                  state.mp[id].lt = v.lapTimes;
+                  state.mp[id].tt = v.lap > 1 ? v.lapTimes.reduce((a,b)=>a+b,0) : 0;
+                }
+              }
             }
             this.ais.forEach(ai => {
-              if (ai) state.ai.push({ p: ai.pilot.id, t: ai.t, a: ai.angle, s: ai.speed, sf: ai.sideFactor, r: ai.rank, l: ai.lap });
+              if (ai) {
+                const aiState = { p: ai.pilot.id, t: ai.t, a: ai.angle, s: ai.speed, sf: ai.sideFactor, r: ai.rank, l: ai.lap };
+                if (syncTimetable) {
+                  aiState.lt = ai.lapTimes;
+                  aiState.tt = ai.lap > 1 ? ai.lapTimes.reduce((a,b)=>a+b,0) : 0;
+                }
+                state.ai.push(aiState);
+              }
             });
             this.network.broadcastGameState(state);
           }
@@ -1832,6 +1863,7 @@ class Game {
       const isLocal = id === this.network.myId;
       const upg = { speed: 0, handling: 0, armor: 0 }; 
       const v = new Vehicle(this.scene, p.vehicleId, isLocal, PILOTS[p.pilotId], upg);
+      v.isHuman = true;
       v.minimapMarker.layers.set(1);
       if (isLocal) {
         this.player = v;
@@ -1901,6 +1933,8 @@ class Game {
           const s = state.mp[id];
           const v = this.mpPlayers[id];
           v.t = s.t; v.angle = s.a; v.speed = s.s; v.sideFactor = s.sf; v.rank = s.r; v.lap = s.l;
+          if (s.lt) v.lapTimes = s.lt;
+          if (s.tt !== undefined) v.totalTime = s.tt;
           v.update(0, this.track, {accelerate: false}, [], () => {}); 
         }
       }
@@ -1913,6 +1947,8 @@ class Game {
         }
         const ai = this.ais[i];
         ai.t = s.t; ai.angle = s.a; ai.speed = s.s; ai.sideFactor = s.sf; ai.rank = s.r; ai.lap = s.l;
+        if (s.lt) ai.lapTimes = s.lt;
+        if (s.tt !== undefined) ai.totalTime = s.tt;
         ai.update(0, this.track, null, [], () => {}); 
       });
     }

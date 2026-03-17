@@ -7,6 +7,7 @@ export class Vehicle {
     this.scene = scene;
     this.type = type; 
     this.isPlayer = isPlayer;
+    this.isHuman = isPlayer; // Default to isPlayer, can be overridden for remote humans
     this.pilot = pilot;
     
     const stats = VEHICLE_BASE_STATS[type];
@@ -32,6 +33,7 @@ export class Vehicle {
     this.lap = 1;
     this.lapProgress = 0; 
     this.lapTimes = [];
+    this.totalTime = 0;
     this.rank = 0; 
     this.maxEnergy = stats.armor + (upgrades.armor * 25);
     this.energy = this.maxEnergy; 
@@ -427,12 +429,12 @@ export class Vehicle {
         }
 
         export class AI extends Vehicle {
-        constructor(scene, difficulty, pilot) {
-        super(scene, Math.floor(Math.random() * 3), false, pilot);
-        this.difficulty = difficulty; this.t = Math.random() * 0.05; this.angle = Math.random() * Math.PI * 2;
-        this.lapProgress = this.t; this.targetAngle = this.angle; this.reactionTimer = 0;
-        }
-        update(dt, track, player, otherRacers = [], spawnProjectile = null) {
+          constructor(scene, difficulty, pilot) {
+            super(scene, Math.floor(Math.random() * 3), false, pilot);
+            this.isHuman = false;
+            this.difficulty = difficulty; this.t = Math.random() * 0.05; this.angle = Math.random() * Math.PI * 2;
+            this.lapProgress = this.t; this.targetAngle = this.angle; this.reactionTimer = 0;
+          }        update(dt, track, player, otherRacers = [], spawnProjectile = null) {
     if (this.isExploded) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
