@@ -52,11 +52,13 @@ export class NetworkManager {
   initLobbyBrowser(onUpdate) {
     if (!this.mqttClient) {
       // Using global mqtt from CDN
-      this.mqttClient = window.mqtt.connect('wss://test.mosquitto.org:8081');
-      this.mqttClient.on('connect', () => {
-        this.mqttClient.subscribe(this.lobbyTopic);
+      const client = window.mqtt.connect('wss://test.mosquitto.org:8081');
+      this.mqttClient = client;
+      
+      client.on('connect', () => {
+        client.subscribe(this.lobbyTopic);
       });
-      this.mqttClient.on('message', (topic, message) => {
+      client.on('message', (topic, message) => {
         try {
           const host = JSON.parse(message.toString());
           if (host.id !== this.myId) {
@@ -104,12 +106,14 @@ export class NetworkManager {
       
       // Announce host to MQTT
       if (!this.mqttClient) {
-        this.mqttClient = window.mqtt.connect('wss://test.mosquitto.org:8081');
+        const client = window.mqtt.connect('wss://test.mosquitto.org:8081');
+        this.mqttClient = client;
       }
       this.announceInterval = setInterval(() => {
-        if (this.mqttClient && this.mqttClient.connected) {
+        const client = this.mqttClient;
+        if (client && client.connected) {
           const numPlayers = Object.keys(this.players).length;
-          this.mqttClient.publish(this.lobbyTopic, JSON.stringify({
+          client.publish(this.lobbyTopic, JSON.stringify({
             id: this.myId,
             name: `${playerName}'s Game`,
             mode: config.mode,

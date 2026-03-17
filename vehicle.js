@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { textureManager } from './textures.js';
-import { VEHICLE_BASE_STATS } from './main.js';
+import { VEHICLE_BASE_STATS } from './constants.js';
 
 export class Vehicle {
   constructor(scene, type, isPlayer, pilot = { id: -1, name: "UNKNOWN", color: new THREE.Color(0xffffff) }, upgrades = { speed: 0, handling: 0, armor: 0 }) {
@@ -429,18 +429,28 @@ export class Vehicle {
         this.lapProgress = this.t; this.targetAngle = this.angle; this.reactionTimer = 0;
         }
         update(dt, track, player, otherRacers = [], spawnProjectile = null) {
-        if (this.isExploded) {
-        this.respawnTimer -= dt;
-        if (this.respawnTimer <= 0) {
+    if (this.isExploded) {
+      this.respawnTimer -= dt;
+      if (this.respawnTimer <= 0) {
         this.isExploded = false; this.energy = this.maxEnergy * 0.5; this.speed = 0; 
         this.mesh.visible = true;
         if (this.trailMesh.visible !== false) this.trailMesh.visible = true;
         if (this.minimapMarker.visible !== false) this.minimapMarker.visible = true;
         if (this.rankLabel.visible !== false) this.rankLabel.visible = true;
         if (this.numberLabel.visible !== false) this.numberLabel.visible = true;
-        }
-        return;
-        }    this.reactionTimer -= dt;
+      }
+      return;
+    }
+
+    if (dt <= 0) {
+      super.update(0, track, { accelerate: false, brake: false, left: false, right: false, switch: false, fire: false }, otherRacers, spawnProjectile);
+      return;
+    }
+
+    this.reactionTimer -= dt;
+    const inputs = { accelerate: true, brake: false, left: false, right: false, switch: false, fire: false };
+    let distToPlayer = 0;
+
     if (this.reactionTimer <= 0) {
       this.reactionTimer = 0.4 - this.difficulty * 0.1;
       let nearestPad = null, nearestObstacle = null, minDistPad = 0.08, minDistObs = 0.04; 
@@ -452,23 +462,34 @@ export class Vehicle {
       }
       if (nearestObstacle) this.targetAngle = nearestObstacle.angle + Math.PI / 2;
       else if (nearestPad && Math.random() < this.pilot.traits.speed_focus) this.targetAngle = nearestPad.angle;
-      const distToPlayer = player.lapProgress - this.lapProgress;
-      if (Math.abs(distToPlayer) < 0.01 && player.isInside === this.isInside && Math.random() < this.pilot.traits.aggression) this.targetAngle = player.angle;
-      if (distToPlayer < 0 && distToPlayer > -0.02 && Math.random() < this.pilot.traits.weaving) this.targetAngle += Math.sin(performance.now() * 0.01) * 0.5;
-      if (this.weapon) {
-        if (this.weapon === 'missile' && distToPlayer > 0 && distToPlayer < 0.05) this.fireWeapon(spawnProjectile);
-        else if (distToPlayer < 0 && distToPlayer > -0.03) this.fireWeapon(spawnProjectile); 
+      
+      if (player) {
+        const dTP = player.lapProgress - this.lapProgress;
+        if (Math.abs(dTP) < 0.01 && player.isInside === this.isInside && Math.random() < this.pilot.traits.aggression) this.targetAngle = player.angle;
+        if (dTP < 0 && dTP > -0.02 && Math.random() < this.pilot.traits.weaving) this.targetAngle += Math.sin(performance.now() * 0.01) * 0.5;
+        if (this.weapon) {
+          if (this.weapon === 'missile' && dTP > 0 && dTP < 0.05) this.fireWeapon(spawnProjectile);
+          else if (dTP < 0 && dTP > -0.03) this.fireWeapon(spawnProjectile); 
+        }
       }
+      
       if (Math.random() > 0.98) { this.isInside = !this.isInside; this.targetSideFactor = this.isInside ? -1.0 : 1.0; }
     }
-    const inputs = { accelerate: true, brake: false, left: false, right: false, switch: false, fire: false };
-    const distToPlayer = this.lapProgress - player.lapProgress;
+
+    if (player) {
+      distToPlayer = this.lapProgress - player.lapProgress;
+    }
+
     let diffMult = [0.8, 0.92, 1.05][this.difficulty];
-    if (distToPlayer < -0.1) diffMult *= 1.2; else if (distToPlayer > 0.1) diffMult *= 0.9;
-    if (distToPlayer > 0.05 && Math.random() > 0.8) inputs.accelerate = false;
+    if (player) {
+      if (distToPlayer < -0.1) diffMult *= 1.2; else if (distToPlayer > 0.1) diffMult *= 0.9;
+      if (distToPlayer > 0.05 && Math.random() > 0.8) inputs.accelerate = false;
+      if (this.lap > 1 && this.energy > 40 && (distToPlayer < -0.05 || Math.random() > 0.99)) inputs.fire = true;
+    }
+
     let angleDiff = this.targetAngle - this.angle; while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
     if (angleDiff > 0.1) inputs.right = true; if (angleDiff < -0.1) inputs.left = true;
-    if (this.lap > 1 && this.energy > 40 && (distToPlayer < -0.05 || Math.random() > 0.99)) inputs.fire = true;
+    
     super.update(dt * diffMult, track, inputs, otherRacers, spawnProjectile);
   }
 }
