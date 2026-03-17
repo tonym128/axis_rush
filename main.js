@@ -370,8 +370,8 @@ class Game {
     
     // Show stats with upgrades
     const currentStats = {
-      speed: baseStats.speed + (upg.speed * 25),
-      accel: baseStats.accel + (upg.speed * 15),
+      speed: baseStats.speed + (upg.speed * 17.5),
+      accel: baseStats.accel + (upg.speed * 10.5),
       handling: baseStats.handling + (upg.handling * 0.4),
       armor: baseStats.armor + (upg.armor * 25)
     };
@@ -848,8 +848,8 @@ class Game {
     const upg = pilotData.upgrades[type];
     const baseStats = VEHICLE_BASE_STATS[type];
     const currentStats = {
-      speed: baseStats.speed + (upg.speed * 25),
-      accel: baseStats.accel + (upg.speed * 15),
+      speed: baseStats.speed + (upg.speed * 17.5),
+      accel: baseStats.accel + (upg.speed * 10.5),
       handling: baseStats.handling + (upg.handling * 0.4),
       armor: baseStats.armor + (upg.armor * 25)
     };
@@ -1575,10 +1575,11 @@ class Game {
                 msg.innerText = "GO!"; 
                 if (isPerfect) {
                   msg.innerHTML = "GO!<br><span style='color:#ff0; font-size:2rem;'>PERFECT START!!</span>";
-                  if (this.player) { this.player.speed = 400; this.player.bonusSpeed = 200; }
-                } else if (isGood) {
+                  if (this.player) { this.player.speed = 280; this.player.bonusSpeed = 100; }
+                  } else if (isGood) {
                   msg.innerHTML = "GO!<br><span style='color:#0ff; font-size:1.5rem;'>GOOD START</span>";
-                  if (this.player) { this.player.speed = 200; }
+                  if (this.player) { this.player.speed = 140; }
+
                 }
                 setTimeout(() => { if (msg.innerText.startsWith("GO")) msg.innerText = ""; }, 1000);
               }
@@ -1714,7 +1715,7 @@ class Game {
         for (const ai of this.ais) ai.update(dt, this.track, this.player, allRacers, spawnFn);
         this.weaponSystem.update(dt, allRacers);
       }
-      const speedFactor = this.player ? Math.max(0, (this.player.speed - 200) / 350) : 0;
+      const speedFactor = this.player ? Math.max(0, (this.player.speed - 140) / 245) : 0;
       this.chromaticEffect.offset.set(speedFactor * 0.015, speedFactor * 0.015);
       this.camera.fov = 95 + speedFactor * 25; this.camera.updateProjectionMatrix();
       const tOffset = this.inputs.rearView ? 0.005 : -0.001;

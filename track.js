@@ -170,7 +170,9 @@ export class Track {
       const lookTarget = pos.clone().add(tangent);
       mesh.up.copy(up); mesh.lookAt(lookTarget);
       this.container.add(mesh);
-      this.items.push({ type, mesh, t, angle, isInside, active: true, cooldown: 0 });
+
+      const boundingBox = new THREE.Box3().setFromObject(mesh);
+      this.items.push({ type, mesh, t, angle, isInside, active: true, cooldown: 0, boundingBox });
     }
   }
   

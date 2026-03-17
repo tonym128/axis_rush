@@ -13,8 +13,8 @@ export class Vehicle {
     
     const stats = VEHICLE_BASE_STATS[type];
     
-    this.maxSpeed = stats.speed + (upgrades.speed * 25);
-    this.acceleration = stats.accel + (upgrades.speed * 15);
+    this.maxSpeed = stats.speed + (upgrades.speed * 17.5);
+    this.acceleration = stats.accel + (upgrades.speed * 10.5);
     this.handling = stats.handling + (upgrades.handling * 0.4);
     
     this.speed = 0;
@@ -68,6 +68,8 @@ export class Vehicle {
 
     this.minimapMarker = this.createMinimapMarker();
     this.scene.add(this.minimapMarker);
+
+    this.boundingBox = new THREE.Box3();
   }
   
   createRankLabel() {
@@ -283,7 +285,7 @@ export class Vehicle {
       positions[i * 6 + 3] = entry.p2.x; positions[i * 6 + 4] = entry.p2.y; positions[i * 6 + 5] = entry.p2.z;
     }
     this.trailMesh.geometry.attributes.position.needsUpdate = true;
-    this.trailMesh.material.opacity = (this.speed / 400) * 0.7;
+    this.trailMesh.material.opacity = (this.speed / 280) * 0.7;
   }
 
   updateSlipstream(otherRacers) {
@@ -312,7 +314,7 @@ export class Vehicle {
 
   updateBlurLines() {
     if (!this.isPlayer) { this.blurLines.visible = false; return; }
-    const speedFactor = Math.max(0, (this.speed - 200) / 300);
+    const speedFactor = Math.max(0, (this.speed - 140) / 210);
     if (speedFactor <= 0) { this.blurLines.visible = false; return; }
     this.blurLines.visible = true; this.blurLines.material.opacity = speedFactor * 0.4;
     const positions = this.blurLines.geometry.attributes.position.array;
@@ -345,8 +347,8 @@ export class Vehicle {
 
     this.updateSlipstream(otherRacers);
     if (this.bonusSpeed > 0) { this.bonusSpeed -= 75 * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
-    if (this.lap > 1 && inputs.boost && this.energy > 5) { this.energy -= 20 * dt; this.bonusSpeed = Math.max(this.bonusSpeed, 150); }
-    let currentMaxSpeed = this.maxSpeed + this.bonusSpeed; if (this.slipstreamActive) currentMaxSpeed *= 1.2; 
+    if (this.lap > 1 && inputs.boost && this.energy > 5) { this.energy -= 20 * dt; this.bonusSpeed = Math.max(this.bonusSpeed, 75); }
+    let currentMaxSpeed = this.maxSpeed + this.bonusSpeed; if (this.slipstreamActive) currentMaxSpeed *= 1.1; 
     
     if (dt > 0) {
       if (inputs.accelerate) this.speed += this.acceleration * dt; else if (inputs.brake) this.speed -= this.acceleration * 1.5 * dt; else this.speed -= this.acceleration * 0.5 * dt; 
@@ -369,6 +371,8 @@ export class Vehicle {
     this.mesh.children[0].rotation.z = (this.sideFactor + 1.0) * (Math.PI / 2.0);
     const tilt = -this.angularVelocity * 0.4;
     this.mesh.children[0].rotation.y = THREE.MathUtils.lerp(this.mesh.children[0].rotation.y, tilt, 0.1);
+
+    this.boundingBox.setFromObject(this.mesh);
 
     const rankPos = pos.clone().add(groupUp.clone().multiplyScalar(10.0));
     this.rankLabel.position.copy(rankPos);
@@ -406,13 +410,13 @@ export class Vehicle {
     for (const other of otherRacers) {
       if (other === this || other.isExploded) continue;
       if ((other.sideFactor > 0) !== (this.sideFactor > 0)) continue;
+      
       const tDiff = Math.abs(this.lapProgress - other.lapProgress);
-      if (tDiff < 0.001) {
-        let angleDiff = this.angle - other.angle;
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        const minAngleDist = 0.25;
-        if (Math.abs(angleDiff) < minAngleDist) {
-          const pushForce = (minAngleDist - Math.abs(angleDiff)) * 2.0; const direction = angleDiff > 0 ? 1 : -1;
+      if (tDiff < 0.002) { // Rough optimization
+        if (this.boundingBox.intersectsBox(other.boundingBox)) {
+          let angleDiff = this.angle - other.angle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2; while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          const pushForce = 0.5; const direction = angleDiff > 0 ? 1 : -1;
           this.angle += direction * pushForce; other.angle -= direction * pushForce;
           const avgSpeed = (this.speed + other.speed) * 0.5; this.speed = avgSpeed * 0.9; other.speed = avgSpeed * 0.9;
           this.shakeAmount = 1.5; other.shakeAmount = 1.5; 
@@ -427,13 +431,12 @@ export class Vehicle {
     let onRecharge = false;
     for (const item of track.items) {
       if (!item.active && item.type !== 'recharge') continue; 
+      
       const tDiff = Math.abs(this.t - item.t);
-      const tolerance = (item.type === 'boost' || item.type === 'recharge') ? 0.015 : 0.005;
+      const tolerance = 0.02; // Rough optimization distance
       if (tDiff > tolerance && tDiff < (1.0 - tolerance)) continue; 
-      if ((this.sideFactor < 0) !== item.isInside) continue;
-      let angleDiff = Math.abs(this.angle - item.angle); if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
-      const angleTol = (item.type === 'recharge') ? 0.4 : 0.25;
-      if (angleDiff < angleTol) {
+      
+      if (this.boundingBox.intersectsBox(item.boundingBox)) {
         if (item.type === 'recharge') { 
           onRecharge = true; 
           if (this.isPlayer) audioEngine.playRecharge();
@@ -441,16 +444,17 @@ export class Vehicle {
         }
         item.active = false; item.mesh.visible = false; item.cooldown = 5.0; 
         if (item.type === 'boost') { 
-          this.bonusSpeed = 300; this.speed += 200; 
+          this.bonusSpeed = 150; this.speed += 100; 
           if (this.isPlayer) { this.cameraShakeRequest = 1.2; audioEngine.playBoost(); }
         }
-        else if (item.type === 'weapon') {          const weapons = ['missile', 'oil', 'barrel']; this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
+        else if (item.type === 'weapon') {
+          const weapons = ['missile', 'oil', 'barrel']; this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
           if (this.isPlayer) document.getElementById('weapon-display').innerText = `WEAPON: ${this.weapon.toUpperCase()}`;
         } else if (item.type === 'obstacle') { this.speed *= 0.3; this.takeDamage(20, null, otherRacers); }
-        }
-        }
-        if (onRecharge) this.energy = Math.min(this.maxEnergy, this.energy + 50 * 0.016);
-        }
+      }
+    }
+    if (onRecharge) this.energy = Math.min(this.maxEnergy, this.energy + 50 * 0.016);
+  }
         }
 
         export class AI extends Vehicle {

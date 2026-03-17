@@ -127,9 +127,9 @@ export const VEHICLES = [
 ];
 
 export const VEHICLE_BASE_STATS = [
-  { speed: 300, accel: 150, handling: 3.0, armor: 100 },
-  { speed: 350, accel: 120, handling: 2.0, armor: 100 },
-  { speed: 400, accel: 90,  handling: 1.0, armor: 100 }
+  { speed: 210, accel: 105, handling: 3.0, armor: 100 },
+  { speed: 245, accel: 84,  handling: 2.0, armor: 100 },
+  { speed: 280, accel: 63,  handling: 1.0, armor: 100 }
 ];
 
-export const STAT_MAX = { speed: 550, accel: 250, handling: 6.0, armor: 250 };
+export const STAT_MAX = { speed: 385, accel: 175, handling: 6.0, armor: 250 };
