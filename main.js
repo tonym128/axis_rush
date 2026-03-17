@@ -760,7 +760,7 @@ class Game {
     PILOTS.forEach((p, idx) => {
       const btn = document.createElement('button');
       btn.className = 'char-list-btn';
-      btn.innerHTML = `<img src="${p.portrait}" class="char-list-img"><span>${p.name}</span>`;
+      btn.innerHTML = `<span>${p.name}</span><img src="${p.portrait}" class="char-list-img">`;
       
       const updateInfo = () => {
         const pilotData = this.getPilotData(p.id);
@@ -769,24 +769,22 @@ class Game {
         if (this.gameMode === 'CAMPAIGN') {
           const nextTrack = camp.inProgress ? (MAPS[camp.trackIndex]?.name || "COMPLETE") : "NOT STARTED";
           statusHtml = `
-            <div style="border: 1px solid #f0f; padding: 10px; margin-top: 10px;">
+            <div class="info-box status-viewport">
               <div style="color:#f0f; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">CAMPAIGN STATUS</div>
               <div style="font-size:0.9rem;">PROGRESS: ${camp.inProgress ? `${camp.trackIndex+1}/${MAPS.length}` : '0/10'}</div>
               <div style="font-size:0.9rem;">NEXT: ${nextTrack}</div>
             </div>
           `;
           
-          // Update button text if in campaign mode
           const nextBtn = document.getElementById('btn-char-next');
           if (nextBtn) {
             nextBtn.innerText = camp.inProgress ? "CONTINUE CAMPAIGN" : "START NEW CAMPAIGN";
           }
         }
 
-        // Show upgrades summary
         const upg0 = pilotData.upgrades[0], upg1 = pilotData.upgrades[1], upg2 = pilotData.upgrades[2];
         const upgHtml = `
-          <div style="border: 1px solid #0ff; padding: 10px; margin-top: 10px;">
+          <div class="info-box upgrades-viewport">
             <div style="color:#0ff; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">INSTALLED UPGRADES</div>
             <div style="font-size:0.7rem; color:#aaa; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
               <div>L: S${upg0.speed} H${upg0.handling} A${upg0.armor}</div>
@@ -796,11 +794,15 @@ class Game {
           </div>
         `;
 
-        info.innerHTML = `<div style="color:${p.color.getStyle()}; font-weight:bold; margin-bottom:5px;">${p.faction}</div>
-                          <div style="font-size:0.9rem; margin-bottom:10px; line-height:1.4; text-align:left; max-height:150px; overflow-y:auto;">${p.bg}</div>
-                          <div style="font-style:italic; color:#aaa; font-size:0.8rem; margin-bottom:10px;">GOAL: ${p.goal}</div>
-                          ${statusHtml}
-                          ${upgHtml}`;
+        info.innerHTML = `
+          <div class="info-box story-viewport">
+            <div style="color:${p.color.getStyle()}; font-weight:bold; margin-bottom:5px;">${p.faction}</div>
+            <div style="font-size:0.9rem; margin-bottom:10px; line-height:1.4; text-align:left; max-height:120px; overflow-y:auto;">${p.bg}</div>
+            <div style="font-style:italic; color:#aaa; font-size:0.8rem;">GOAL: ${p.goal}</div>
+          </div>
+          ${statusHtml}
+          ${upgHtml}
+        `;
         picContainer.innerHTML = `<img src="${p.portrait}">`;
       };
       if (p.id === this.playerPilotId) { btn.classList.add('selected'); updateInfo(); }
