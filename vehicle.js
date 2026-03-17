@@ -339,32 +339,48 @@ export class Vehicle {
       }
       return;
     }
+
     this.updateSlipstream(otherRacers);
     if (this.bonusSpeed > 0) { this.bonusSpeed -= 75 * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
     if (this.lap > 1 && inputs.boost && this.energy > 5) { this.energy -= 20 * dt; this.bonusSpeed = Math.max(this.bonusSpeed, 150); }
     let currentMaxSpeed = this.maxSpeed + this.bonusSpeed; if (this.slipstreamActive) currentMaxSpeed *= 1.2; 
-    if (inputs.accelerate) this.speed += this.acceleration * dt; else if (inputs.brake) this.speed -= this.acceleration * 1.5 * dt; else this.speed -= this.acceleration * 0.5 * dt; 
-    this.speed = Math.max(0, Math.min(this.speed, currentMaxSpeed)); if (inputs.left || inputs.right) this.speed -= this.speed * 0.02 * dt;
-    const steeringAccel = this.handling * 10.0, steeringFriction = 4.0;
-    if (inputs.left) this.angularVelocity -= steeringAccel * dt; else if (inputs.right) this.angularVelocity += steeringAccel * dt; else this.angularVelocity -= this.angularVelocity * steeringFriction * dt;
-    const maxAngVel = 2.0; this.angularVelocity = Math.max(-maxAngVel, Math.min(maxAngVel, this.angularVelocity));
-    const sideMultiplier = this.sideFactor < 0 ? -1.0 : 1.0; this.angle += this.angularVelocity * sideMultiplier * dt;
-    if (inputs.switch) { this.isInside = !this.isInside; this.targetSideFactor = this.isInside ? -1.0 : 1.0; inputs.switch = false; }
-    const transitionSpeed = 4.0; if (this.sideFactor < this.targetSideFactor) this.sideFactor = Math.min(this.targetSideFactor, this.sideFactor + dt * transitionSpeed); else if (this.sideFactor > this.targetSideFactor) this.sideFactor = Math.max(this.targetSideFactor, this.sideFactor - dt * transitionSpeed);
-    if (inputs.fire && this.weapon) { this.fireWeapon(spawnProjectile); inputs.fire = false; }
-    if (this.angle < 0) this.angle += Math.PI * 2; if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
-    const trackLength = 12000; const deltaT = (this.speed * dt) / trackLength; this.t += deltaT; this.lapProgress += deltaT; if (this.t >= 1.0) { this.t -= 1.0; this.lap++; }
+    
+    if (dt > 0) {
+      if (inputs.accelerate) this.speed += this.acceleration * dt; else if (inputs.brake) this.speed -= this.acceleration * 1.5 * dt; else this.speed -= this.acceleration * 0.5 * dt; 
+      this.speed = Math.max(0, Math.min(this.speed, currentMaxSpeed)); if (inputs.left || inputs.right) this.speed -= this.speed * 0.02 * dt;
+      const steeringAccel = this.handling * 10.0, steeringFriction = 4.0;
+      if (inputs.left) this.angularVelocity -= steeringAccel * dt; else if (inputs.right) this.angularVelocity += steeringAccel * dt; else this.angularVelocity -= this.angularVelocity * steeringFriction * dt;
+      const maxAngVel = 2.0; this.angularVelocity = Math.max(-maxAngVel, Math.min(maxAngVel, this.angularVelocity));
+      const sideMultiplier = this.sideFactor < 0 ? -1.0 : 1.0; this.angle += this.angularVelocity * sideMultiplier * dt;
+      if (inputs.switch) { this.isInside = !this.isInside; this.targetSideFactor = this.isInside ? -1.0 : 1.0; inputs.switch = false; }
+      const transitionSpeed = 4.0; if (this.sideFactor < this.targetSideFactor) this.sideFactor = Math.min(this.targetSideFactor, this.sideFactor + dt * transitionSpeed); else if (this.sideFactor > this.targetSideFactor) this.sideFactor = Math.max(this.targetSideFactor, this.sideFactor - dt * transitionSpeed);
+      if (inputs.fire && this.weapon) { this.fireWeapon(spawnProjectile); inputs.fire = false; }
+      if (this.angle < 0) this.angle += Math.PI * 2; if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
+      const trackLength = 12000; const deltaT = (this.speed * dt) / trackLength; this.t += deltaT; this.lapProgress += deltaT; if (this.t >= 1.0) { this.t -= 1.0; this.lap++; }
+    }
+
     const frame = track.getFrameAt(this.t); const crossNormal = new THREE.Vector3().copy(frame.normal).applyAxisAngle(frame.tangent, this.angle);
     let r = track.radius + (this.sideFactor * 2.0); const pos = new THREE.Vector3().copy(frame.point); pos.add(crossNormal.clone().multiplyScalar(r));
     if (this.shakeAmount > 0) { this.shakeAmount -= dt * 2.0; const shakeOffset = new THREE.Vector3((Math.random() - 0.5) * this.shakeAmount, (Math.random() - 0.5) * this.shakeAmount, (Math.random() - 0.5) * this.shakeAmount); pos.add(shakeOffset); }
     this.mesh.position.copy(pos); const groupUp = crossNormal.clone().multiplyScalar(this.sideFactor); this.mesh.up.copy(groupUp); this.mesh.lookAt(pos.clone().add(frame.tangent));
-    this.mesh.children[0].rotation.z = (this.sideFactor + 1.0) * (Math.PI / 2.0); const bankTarget = -this.angularVelocity * 0.4; this.mesh.children[0].rotation.y = THREE.MathUtils.lerp(this.mesh.children[0].rotation.y, bankTarget, 0.1);
-    const labelPos = pos.clone().add(groupUp.clone().multiplyScalar(10)); this.rankLabel.position.copy(labelPos);
-    const numPos = pos.clone().add(groupUp.clone().multiplyScalar(-5)); this.numberLabel.position.copy(numPos);
-    this.minimapMarker.position.copy(pos); this.updateTrail(); this.updateBlurLines(); this.flashShield(dt); this.updateInvulnerability(dt);
+    this.mesh.children[0].rotation.z = (this.sideFactor + 1.0) * (Math.PI / 2.0);
+    const tilt = -this.angularVelocity * 0.4;
+    this.mesh.children[0].rotation.y = THREE.MathUtils.lerp(this.mesh.children[0].rotation.y, tilt, 0.1);
+
+    const rankPos = pos.clone().add(groupUp.clone().multiplyScalar(10.0));
+    this.rankLabel.position.copy(rankPos);
+    const numPos = pos.clone().add(groupUp.clone().multiplyScalar(-5.0));
+    this.numberLabel.position.copy(numPos);
+    this.minimapMarker.position.copy(pos);
+
+    this.updateTrail();
+    this.updateBlurLines();
+    this.flashShield(dt);
+    this.updateInvulnerability(dt);
     
     if (dt > 0) {
-      this.checkCollisions(track, otherRacers); this.checkVehicleCollisions(otherRacers, dt);
+      this.checkCollisions(track, otherRacers);
+      this.checkVehicleCollisions(otherRacers, dt);
     }
     
     if (this.energy <= 0 && !this.isExploded) this.explode();
@@ -429,12 +445,16 @@ export class Vehicle {
         }
 
         export class AI extends Vehicle {
-          constructor(scene, difficulty, pilot) {
-            super(scene, Math.floor(Math.random() * 3), false, pilot);
-            this.isHuman = false;
-            this.difficulty = difficulty; this.t = Math.random() * 0.05; this.angle = Math.random() * Math.PI * 2;
-            this.lapProgress = this.t; this.targetAngle = this.angle; this.reactionTimer = 0;
-          }        update(dt, track, player, otherRacers = [], spawnProjectile = null) {
+  constructor(scene, difficulty, pilot) {
+    super(scene, Math.floor(Math.random() * 3), false, pilot);
+    this.isHuman = false;
+    this.difficulty = difficulty; 
+    this.t = 0; 
+    this.angle = 0;
+    this.lapProgress = 0; 
+    this.targetAngle = 0; 
+    this.reactionTimer = 0;
+  }        update(dt, track, player, otherRacers = [], spawnProjectile = null) {
     if (this.isExploded) {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {

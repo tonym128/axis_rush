@@ -1126,14 +1126,27 @@ class Game {
     this.player.minimapMarker.layers.set(1);
     this.player._lapStartTime = performance.now(); // Will be reset at GO!
     this.player._lastRecordedLap = 1;
+    
+    // Assign starting position for player
+    this.player.t = 0.01;
+    this.player.angle = -0.4;
+    this.player.lapProgress = this.player.t;
+
     this.ais = []; 
     if (this.gameMode !== 'TIME_TRIAL') {
-      PILOTS.forEach(p => { 
+      PILOTS.forEach((p, idx) => { 
         if (p.id !== this.playerPilotId) {
           const ai = new AI(this.scene, this.difficulty, p);
           ai.minimapMarker.layers.set(1);
           ai._lapStartTime = performance.now();
           ai._lastRecordedLap = 1;
+          
+          // Stagger AI positions
+          const gridIdx = this.ais.length + 1;
+          ai.t = 0.01 - (gridIdx * 0.003);
+          ai.angle = (gridIdx % 2 === 0 ? -0.4 : 0.4);
+          ai.lapProgress = ai.t;
+          
           this.ais.push(ai);
         }
       });
@@ -1469,8 +1482,8 @@ class Game {
       this.track.update(dt, this.camera);
       
       let allRacers = [];
-      if (this.gameMode === 'MULTIPLAYER' && this.mpPlayers) {
-        allRacers = Object.values(this.mpPlayers).concat(this.ais);
+      if (this.gameMode === 'MULTIPLAYER') {
+        allRacers = (this.player ? [this.player] : []).concat(Object.values(this.mpPlayers)).concat(this.ais);
       } else {
         allRacers = this.player ? [this.player, ...this.ais] : [];
       }
@@ -1846,6 +1859,7 @@ class Game {
   startMultiplayerRace(players, config) {
     this.gameMode = 'MULTIPLAYER';
     this.mapType = config.mapIndex;
+    this.difficulty = config.difficulty;
     this.startCamPos.copy(this.camera.position); this.state = 'STARTING'; this.countdownTimer = this.countdownTotal; this.showScreen('hud');
     const hudPic = document.getElementById('hud-pilot-pic'); hudPic.innerHTML = `<img src="${PILOTS[this.playerPilotId].portrait}">`;
     while(this.scene.children.length > 0) this.scene.remove(this.scene.children[0]); 
@@ -1858,28 +1872,46 @@ class Game {
     this.mpPlayers = {}; 
     this.ais = [];
 
-    for (let id in players) {
+    // Sort player IDs to ensure consistent grid positions across all clients
+    const sortedPlayerIds = Object.keys(players).sort();
+    
+    sortedPlayerIds.forEach((id, idx) => {
       const p = players[id];
       const isLocal = id === this.network.myId;
       const upg = { speed: 0, handling: 0, armor: 0 }; 
       const v = new Vehicle(this.scene, p.vehicleId, isLocal, PILOTS[p.pilotId], upg);
       v.isHuman = true;
       v.minimapMarker.layers.set(1);
+      
+      // Assign starting position
+      v.t = 0.01 - (idx * 0.003);
+      v.angle = (idx % 2 === 0 ? -0.4 : 0.4);
+      v.lapProgress = v.t;
+
       if (isLocal) {
         this.player = v;
       } else {
         this.remoteInputs[id] = { accelerate: false, brake: false, left: false, right: false, fire: false, boost: false };
       }
       this.mpPlayers[id] = v;
-    }
+    });
 
-    if (config.useAI && this.network.isHost) {
+    if (config.useAI) {
+      const humanPilotIds = Object.values(players).map(pl => pl.pilotId);
+      let aiGridIdx = sortedPlayerIds.length;
+      
       PILOTS.forEach(p => { 
-        const taken = Object.values(players).some(pl => pl.pilotId === p.id);
-        if (!taken) {
+        if (!humanPilotIds.includes(p.id)) {
           const ai = new AI(this.scene, config.difficulty, p);
           ai.minimapMarker.layers.set(1);
+          
+          // Assign starting position for AI
+          ai.t = 0.01 - (aiGridIdx * 0.003);
+          ai.angle = (aiGridIdx % 2 === 0 ? -0.4 : 0.4);
+          ai.lapProgress = ai.t;
+          
           this.ais.push(ai);
+          aiGridIdx++;
         }
       });
     }
@@ -1927,6 +1959,8 @@ class Game {
       this.lapStartTime = performance.now() - state.rt;
     }
 
+    const allRacers = (this.player ? [this.player] : []).concat(Object.values(this.mpPlayers)).concat(this.ais);
+
     if (state.mp) {
       for (let id in state.mp) {
         if (this.mpPlayers[id]) {
@@ -1935,21 +1969,21 @@ class Game {
           v.t = s.t; v.angle = s.a; v.speed = s.s; v.sideFactor = s.sf; v.rank = s.r; v.lap = s.l;
           if (s.lt) v.lapTimes = s.lt;
           if (s.tt !== undefined) v.totalTime = s.tt;
-          v.update(0, this.track, {accelerate: false}, [], () => {}); 
+          v.update(0, this.track, {accelerate: false}, allRacers, () => {}); 
         }
       }
     }
     if (state.ai) {
       state.ai.forEach((s, i) => {
         if (!this.ais[i]) {
-          this.ais[i] = new AI(this.scene, 1, PILOTS[s.p]); 
+          this.ais[i] = new AI(this.scene, this.difficulty, PILOTS[s.p]); 
           this.ais[i].minimapMarker.layers.set(1);
         }
         const ai = this.ais[i];
         ai.t = s.t; ai.angle = s.a; ai.speed = s.s; ai.sideFactor = s.sf; ai.rank = s.r; ai.lap = s.l;
         if (s.lt) ai.lapTimes = s.lt;
         if (s.tt !== undefined) ai.totalTime = s.tt;
-        ai.update(0, this.track, null, [], () => {}); 
+        ai.update(0, this.track, null, allRacers, () => {}); 
       });
     }
   }
