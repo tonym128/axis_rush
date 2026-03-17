@@ -37,6 +37,10 @@ export class AudioEngine {
     this.bassFilter.frequency.value = 1000;
     this.bassFilter.Q.value = 5;
     this.bassFilter.connect(this.musicGain);
+
+    // Engine sound infrastructure
+    this.engineOsc = null;
+    this.engineGain = null;
     
     this.scheduler = this.scheduler.bind(this);
   }
@@ -60,7 +64,7 @@ export class AudioEngine {
     this.measureCount = 0;
     
     if (mode === 'menu') {
-      this.tempo = 90; // Soft and slow
+      this.tempo = 60; // Very slow and ambient
     } else {
       // Race mode: vary tempo slightly by track and difficulty
       this.tempo = 140 + (difficulty * 15) + (trackIndex % 3) * 5;
@@ -69,7 +73,7 @@ export class AudioEngine {
     // Only update context parameters if it's already running to avoid warnings
     if (this.ctx.state === 'running') {
       if (mode === 'menu') {
-        this.bassFilter.frequency.setTargetAtTime(400, this.ctx.currentTime, 0.1);
+        this.bassFilter.frequency.setTargetAtTime(250, this.ctx.currentTime, 0.1);
       } else {
         this.bassFilter.frequency.setTargetAtTime(1000 + difficulty * 500, this.ctx.currentTime, 0.1);
       }
@@ -80,13 +84,22 @@ export class AudioEngine {
 
   updatePatterns() {
     if (this.mode === 'menu') {
-      // Ambient, slow, sparse beat
-      this.kickPattern =   [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-      this.hatPattern =    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]; // Steady slow pulse
-      this.snarePattern =  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // No snare
-      this.bassPattern =   [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; // Long droning notes
-      // Minor 9th arpeggio feel
-      this.bassNotes =     [48, 0, 0, 0, 51, 0, 0, 0, 55, 0, 0, 0, 58, 0, 0, 0];
+      const m = this.measureCount % 4;
+      // Very sparse kick, only on first beat of every 2nd measure
+      this.kickPattern = (m % 2 === 0) ? [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      // Soft pulsing hats
+      this.hatPattern = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+      this.snarePattern = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      
+      // Ethereal arpeggio
+      this.bassPattern = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0];
+      const scales = [
+        [48, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 60, 0, 0, 0],
+        [48, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 60, 0, 0, 0],
+        [46, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 58, 0, 0, 0],
+        [44, 0, 0, 0, 0, 0, 51, 0, 0, 0, 0, 0, 56, 0, 0, 0]
+      ];
+      this.bassNotes = scales[m];
       return;
     }
 
@@ -137,12 +150,18 @@ export class AudioEngine {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.connect(gain);
-    gain.connect(this.sfxGain);
+    gain.connect(this.musicGain);
     
-    osc.frequency.setValueAtTime(150, time);
-    osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
-    
-    gain.gain.setValueAtTime(1, time);
+    if (this.mode === 'menu') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(60, time);
+      osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.4);
+      gain.gain.setValueAtTime(0.4, time);
+    } else {
+      osc.frequency.setValueAtTime(150, time);
+      osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
+      gain.gain.setValueAtTime(1, time);
+    }
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
     
     osc.start(time);
@@ -162,15 +181,16 @@ export class AudioEngine {
     
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'highpass';
-    filter.frequency.value = 7000;
+    filter.frequency.value = this.mode === 'menu' ? 10000 : 7000;
     
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.5, time);
+    const vol = this.mode === 'menu' ? 0.1 : 0.5;
+    gain.gain.setValueAtTime(vol, time);
     gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
     
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.sfxGain);
+    gain.connect(this.musicGain);
     
     noise.start(time);
   }
@@ -181,10 +201,11 @@ export class AudioEngine {
     const oscGain = this.ctx.createGain();
     
     osc.connect(oscGain);
-    oscGain.connect(this.sfxGain);
+    oscGain.connect(this.musicGain);
     
     osc.frequency.setValueAtTime(250, time);
-    oscGain.gain.setValueAtTime(0.5, time);
+    const vol = this.mode === 'menu' ? 0.1 : 0.5;
+    oscGain.gain.setValueAtTime(vol, time);
     oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
     osc.start(time);
     osc.stop(time + 0.2);
@@ -204,12 +225,12 @@ export class AudioEngine {
     filter.frequency.value = 2000;
     
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.5, time);
+    noiseGain.gain.setValueAtTime(vol, time);
     noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
     
     noise.connect(filter);
     filter.connect(noiseGain);
-    noiseGain.connect(this.sfxGain);
+    noiseGain.connect(this.musicGain);
     noise.start(time);
   }
   
@@ -219,7 +240,7 @@ export class AudioEngine {
   
   playBass(time, note) {
     const osc = this.ctx.createOscillator();
-    osc.type = 'sawtooth';
+    osc.type = this.mode === 'menu' ? 'triangle' : 'sawtooth';
     const gain = this.ctx.createGain();
     
     osc.connect(gain);
@@ -227,16 +248,23 @@ export class AudioEngine {
     
     osc.frequency.value = this.midiToFreq(note);
     
-    gain.gain.setValueAtTime(0.8, time);
-    gain.gain.setTargetAtTime(0.0, time + 0.05, 0.1);
+    const vol = this.mode === 'menu' ? 0.4 : 0.8;
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.setTargetAtTime(0.0, time + 0.1, 0.2);
     
     // Filter envelope
-    this.bassFilter.frequency.setValueAtTime(400, time);
-    this.bassFilter.frequency.exponentialRampToValueAtTime(2000, time + 0.1);
-    this.bassFilter.frequency.exponentialRampToValueAtTime(400, time + 0.2);
+    if (this.mode === 'menu') {
+      this.bassFilter.frequency.setValueAtTime(200, time);
+      this.bassFilter.frequency.exponentialRampToValueAtTime(800, time + 0.2);
+      this.bassFilter.frequency.exponentialRampToValueAtTime(200, time + 0.4);
+    } else {
+      this.bassFilter.frequency.setValueAtTime(400, time);
+      this.bassFilter.frequency.exponentialRampToValueAtTime(2000, time + 0.1);
+      this.bassFilter.frequency.exponentialRampToValueAtTime(400, time + 0.2);
+    }
     
     osc.start(time);
-    osc.stop(time + 0.3);
+    osc.stop(time + 0.5);
   }
 
   playLapComplete() {
@@ -264,6 +292,125 @@ export class AudioEngine {
     osc2.start(time);
     osc1.stop(time + 0.6);
     osc2.stop(time + 0.6);
+  }
+
+  playShoot() {
+    const time = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    
+    osc.frequency.setValueAtTime(400, time);
+    osc.frequency.exponentialRampToValueAtTime(50, time + 0.1);
+    
+    gain.gain.setValueAtTime(0.2, time);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+    
+    osc.start(time);
+    osc.stop(time + 0.1);
+  }
+
+  playHit() {
+    const time = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    
+    osc.frequency.setValueAtTime(100, time);
+    osc.frequency.exponentialRampToValueAtTime(20, time + 0.2);
+    
+    gain.gain.setValueAtTime(0.5, time);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+    
+    osc.start(time);
+    osc.stop(time + 0.2);
+
+    // Add noise crunch
+    const bufferSize = this.ctx.sampleRate * 0.2;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.3, time);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+    noise.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
+    noise.start(time);
+  }
+
+  playBoost() {
+    const time = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    
+    osc.frequency.setValueAtTime(100, time);
+    osc.frequency.exponentialRampToValueAtTime(1000, time + 0.5);
+    
+    gain.gain.setValueAtTime(0.2, time);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+    
+    osc.start(time);
+    osc.stop(time + 0.5);
+  }
+
+  playRecharge() {
+    // Sparse high pitched blips
+    const time = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    
+    osc.frequency.setValueAtTime(1200 + Math.random() * 400, time);
+    gain.gain.setValueAtTime(0.1, time);
+    gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+    
+    osc.start(time);
+    osc.stop(time + 0.05);
+  }
+
+  startEngine() {
+    if (this.engineOsc) return;
+    this.engineOsc = this.ctx.createOscillator();
+    this.engineOsc.type = 'sawtooth';
+    this.engineGain = this.ctx.createGain();
+    this.engineGain.gain.value = 0;
+    
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400;
+    
+    this.engineOsc.connect(filter);
+    filter.connect(this.engineGain);
+    this.engineGain.connect(this.sfxGain);
+    
+    this.engineOsc.start();
+  }
+
+  stopEngine() {
+    if (this.engineOsc) {
+      this.engineOsc.stop();
+      this.engineOsc = null;
+      this.engineGain = null;
+    }
+  }
+
+  updateEngine(speedFactor) {
+    if (!this.engineGain) return;
+    const freq = 50 + speedFactor * 100;
+    const vol = 0.05 + speedFactor * 0.15;
+    this.engineOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.1);
+    this.engineGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
   }
   
   scheduleNote(beatNumber, time) {

@@ -999,6 +999,7 @@ class Game {
   
   showMenu() {
     this.showScreen('main-menu'); audioEngine.setMode('menu');
+    audioEngine.stopEngine();
 
     if (this.state !== 'MENU' || !this.track) {
       this.state = 'MENU';
@@ -1110,6 +1111,7 @@ class Game {
   startRace() {
     if (this.gameMode === 'CAMPAIGN') this.mapType = this.campaignTrackIndex;
     this.startCamPos.copy(this.camera.position); this.state = 'STARTING'; this.countdownTimer = this.countdownTotal; this.showScreen('hud');
+    audioEngine.startEngine();
     const hudPic = document.getElementById('hud-pilot-pic'); hudPic.innerHTML = `<img src="${PILOTS[this.playerPilotId].portrait}">`;
     while(this.scene.children.length > 0) this.scene.remove(this.scene.children[0]); 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
@@ -1393,6 +1395,7 @@ class Game {
   
   finishRace(rankedRacers) {
     this.state = 'FINISHED'; const points = [10, 8, 6, 5, 4, 3, 2, 1, 0]; let playerRank = 1;
+    audioEngine.stopEngine();
     rankedRacers.forEach((racer, idx) => { this.campaignScores[racer.pilot.id] += points[idx] || 0; if (racer.isPlayer) playerRank = idx + 1; });
     
     let earnedCredits = 0;
@@ -1735,6 +1738,7 @@ class Game {
         }
         this.camera.lookAt(lookPos);
       }
+      if (this.player) audioEngine.updateEngine(this.player.speed / this.player.maxSpeed);
       this.updateHUD();
       this.inputs.switch = false;
     } else {
@@ -1861,6 +1865,7 @@ class Game {
     this.mapType = config.mapIndex;
     this.difficulty = config.difficulty;
     this.startCamPos.copy(this.camera.position); this.state = 'STARTING'; this.countdownTimer = this.countdownTotal; this.showScreen('hud');
+    audioEngine.startEngine();
     const hudPic = document.getElementById('hud-pilot-pic'); hudPic.innerHTML = `<img src="${PILOTS[this.playerPilotId].portrait}">`;
     while(this.scene.children.length > 0) this.scene.remove(this.scene.children[0]); 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); ambientLight.layers.enable(1); this.scene.add(ambientLight);

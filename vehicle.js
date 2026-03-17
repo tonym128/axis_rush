@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { textureManager } from './textures.js';
 import { VEHICLE_BASE_STATS } from './constants.js';
+import { audioEngine } from './audio.js';
 
 export class Vehicle {
   constructor(scene, type, isPlayer, pilot = { id: -1, name: "UNKNOWN", color: new THREE.Color(0xffffff) }, upgrades = { speed: 0, handling: 0, armor: 0 }) {
@@ -213,6 +214,7 @@ export class Vehicle {
   
   fireWeapon(spawnProjectile) {
     if (!this.weapon) return;
+    if (this.isPlayer) audioEngine.playShoot();
     if (spawnProjectile) spawnProjectile(this.weapon, this);
     else this.speed += 50; 
     if (this.isPlayer) document.getElementById('weapon-display').innerText = `WEAPON: NONE`;
@@ -221,6 +223,7 @@ export class Vehicle {
 
   takeDamage(amount, attacker = null, otherRacers = []) {
     if (this.isExploded || this.invulnerableTimer > 0) return;
+    if (this.isPlayer) audioEngine.playHit();
     this.energy -= amount; this.flashTimer = 0.5;
     this.invulnerableTimer = 1.0;
     if (this.isPlayer) {
@@ -431,11 +434,17 @@ export class Vehicle {
       let angleDiff = Math.abs(this.angle - item.angle); if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
       const angleTol = (item.type === 'recharge') ? 0.4 : 0.25;
       if (angleDiff < angleTol) {
-        if (item.type === 'recharge') { onRecharge = true; continue; }
+        if (item.type === 'recharge') { 
+          onRecharge = true; 
+          if (this.isPlayer) audioEngine.playRecharge();
+          continue; 
+        }
         item.active = false; item.mesh.visible = false; item.cooldown = 5.0; 
-        if (item.type === 'boost') { this.bonusSpeed = 300; this.speed += 200; if (this.isPlayer) this.cameraShakeRequest = 1.2; }
-        else if (item.type === 'weapon') {
-          const weapons = ['missile', 'oil', 'barrel']; this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
+        if (item.type === 'boost') { 
+          this.bonusSpeed = 300; this.speed += 200; 
+          if (this.isPlayer) { this.cameraShakeRequest = 1.2; audioEngine.playBoost(); }
+        }
+        else if (item.type === 'weapon') {          const weapons = ['missile', 'oil', 'barrel']; this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
           if (this.isPlayer) document.getElementById('weapon-display').innerText = `WEAPON: ${this.weapon.toUpperCase()}`;
         } else if (item.type === 'obstacle') { this.speed *= 0.3; this.takeDamage(20, null, otherRacers); }
         }
