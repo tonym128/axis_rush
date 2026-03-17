@@ -83,9 +83,9 @@ h2 {
 .char-selection-layout {
   display: flex;
   gap: 20px;
-  max-width: 1000px;
-  width: 95%;
-  align-items: flex-start;
+  max-width: 1200px;
+  width: 98%;
+  align-items: center;
   justify-content: center;
 }
 
@@ -93,7 +93,7 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 250px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -232,6 +232,7 @@ h2 {
   margin-bottom: 1.5rem;
   text-align: center;
   max-width: 800px;
+  flex: 1;
 }
 
 .menu-section h3 {
@@ -264,22 +265,26 @@ h2 {
 .list-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-height: 50vh;
-  overflow-y: auto;
+  gap: 15px;
   padding: 10px;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   background: rgba(0, 255, 255, 0.05);
+}
+
+#char-list {
+  max-height: none;
+  overflow: visible;
+}
 }
 
 .char-list-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 5px !important;
+  justify-content: center;
+  padding: 8px !important;
   gap: 5px;
-  height: auto !important;
   border-color: #333;
 }
 
@@ -288,6 +293,7 @@ h2 {
   aspect-ratio: 1/1;
   object-fit: cover;
   border: 1px solid #444;
+  max-width: 120px;
 }
 
 .char-list-btn:hover .char-list-img,
@@ -298,8 +304,13 @@ h2 {
 }
 
 .char-list-btn span {
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
 }
 
 button {
@@ -909,6 +920,7 @@ body.is-mobile #mobile-controls {
   
   .char-selection-layout {
     gap: 15px;
+    height: 75vh;
   }
   
   .char-preview-panel {
@@ -924,7 +936,12 @@ body.is-mobile #mobile-controls {
   .list-container {
     max-width: 350px;
     grid-template-columns: repeat(2, 1fr);
-    max-height: 45vh;
+  }
+
+  #char-list {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: none;
+    max-height: none;
   }
   
   .info-box {
@@ -987,8 +1004,10 @@ body.is-mobile #mobile-controls {
     margin-bottom: 5px;
   }
   
-  .list-container {
-    max-height: 40vh;
+  #char-list {
+    grid-template-columns: repeat(3, 1fr);
+    max-height: none;
+    max-width: none;
   }
   
   .info-box {
