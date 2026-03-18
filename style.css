@@ -504,7 +504,13 @@ button.selected {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(125deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.15) 40%, transparent 40.5%);
+  background: linear-gradient(125deg, 
+    transparent 0%, 
+    transparent 15%, 
+    rgba(255, 255, 255, 0.12) 15.2%, 
+    rgba(255, 255, 255, 0.12) 42%, 
+    transparent 42.2%
+  );
   z-index: 1;
   pointer-events: none;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -526,13 +532,13 @@ button.selected {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-#main-menu .main-btn:nth-child(1) { margin-left: 195px; }
-#main-menu .main-btn:nth-child(2) { margin-left: 170px; }
-#main-menu .main-btn:nth-child(3) { margin-left: 145px; }
-#main-menu .main-btn:nth-child(4) { margin-left: 120px; }
-#main-menu .main-btn:nth-child(5) { margin-left: 95px; }
-#main-menu .main-btn:nth-child(6) { margin-left: 70px; }
-#main-menu .main-btn:nth-child(7) { margin-left: 45px; }
+#main-menu .main-btn:nth-child(1) { margin-left: 300px; }
+#main-menu .main-btn:nth-child(2) { margin-left: 260px; }
+#main-menu .main-btn:nth-child(3) { margin-left: 220px; }
+#main-menu .main-btn:nth-child(4) { margin-left: 180px; }
+#main-menu .main-btn:nth-child(5) { margin-left: 140px; }
+#main-menu .main-btn:nth-child(6) { margin-left: 100px; }
+#main-menu .main-btn:nth-child(7) { margin-left: 60px; }
 #main-menu .main-btn:nth-child(8) { margin-left: 20px; }
 
 #main-menu .main-btn:hover {

@@ -48,6 +48,7 @@ class Game {
     sunLight.layers.enable(1);
     this.scene.add(sunLight);
     this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 0; this.carouselIndex = 0;
+    this.currentScreenId = 'main-menu';
     this.campaignTrackIndex = 0; this.campaignScores = {};
     // Per-pilot data: { pilotId: { campaign: { inProgress, trackIndex, scores, vehicleId, difficulty }, upgrades: { vehicleType: { speed, handling, armor } } } }
     this.pilotData = {};
@@ -71,7 +72,7 @@ class Game {
       },
       gp: {
         accelerate: 0, brake: 1, left: 14, right: 15, // buttons (using standard mapping)
-        switch: 2, fire: 3, boost: 5, rearView: 4, pause: 9
+        switch: 2, fire: 3, boost: 5, rearView: 4, pause: 9, back: 1
       }
       };
       this.unlockedImages = ['axis-rush.jpg'];
@@ -252,6 +253,7 @@ class Game {
     this.setFocus(focusable[index]);
   }
   showScreen(id) {
+    this.currentScreenId = id;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const screen = document.getElementById(id);
     if (!screen) return;
@@ -284,6 +286,43 @@ class Game {
       }
     });
     this.onResize();
+  }
+
+  goBack() {
+    const id = this.currentScreenId;
+    if (id === 'main-menu') return;
+    
+    if (id === 'difficulty-select') this.showMenu();
+    else if (id === 'char-select') {
+      if (this.gameMode === 'MULTIPLAYER') this.showMenu();
+      else this.showScreen('difficulty-select');
+    }
+    else if (id === 'car-select') {
+      this.showScreen('char-select'); this.renderCharList();
+    }
+    else if (id === 'track-select') {
+      this.showScreen('car-select');
+    }
+    else if (id === 'multiplayer-menu') this.showMenu();
+    else if (id === 'host-setup') this.showScreen('multiplayer-menu');
+    else if (id === 'lobby-browser') this.showScreen('multiplayer-menu');
+    else if (id === 'mp-lobby') {
+      if (this.network.isHost) this.network.stopHost();
+      else if (this.network.hostConnection) this.network.hostConnection.close();
+      this.showMenu();
+    }
+    else if (id === 'league-standings') this.showMenu();
+    else if (id === 'upgrade-shop') {
+      if (this.shopReturnScreen === 'league-standings') this.showLeagueStandings();
+      else this.showMenu();
+    }
+    else if (id === 'how-to-play') this.showMenu();
+    else if (id === 'gallery-menu') this.showMenu();
+    else if (id === 'settings-menu') this.showMenu();
+    else if (id === 'confirm-dialog') this.showScreen(this._prevScreen || 'main-menu');
+    else if (id === 'char-intro') this.showMenu();
+    else if (id === 'char-outro') this.showMenu();
+    else if (id === 'game-over') this.showMenu();
   }
 
   renderSettings() {
@@ -1030,7 +1069,11 @@ class Game {
   
   setupInputs() {
     window.addEventListener('keydown', (e) => {
-      if (e.code === this.settings.kb.pause) this.togglePause();
+      if (e.code === 'Escape') {
+        if (this.state === 'RACING') this.togglePause();
+        else this.goBack();
+        return;
+      }
       if (this.state !== 'RACING' && this.state !== 'STARTING') {
         // Menu Navigation
         if (e.code === 'ArrowDown' || e.code === 'ArrowRight' || e.code === 'Tab') { e.preventDefault(); this.navigateMenu('next'); }
@@ -1397,6 +1440,12 @@ class Game {
     if (gp.buttons[g.pause].pressed) {
       if (!this._gpPausePressed) { this.togglePause(); this._gpPausePressed = true; }
     } else { this._gpPausePressed = false; }
+
+    if (this.state !== 'RACING' && this.state !== 'STARTING') {
+      if (gp.buttons[g.back].pressed) {
+        if (!this._gpBackPressed) { this.goBack(); this._gpBackPressed = true; }
+      } else { this._gpBackPressed = false; }
+    }
   }
 
   updateRanks(allRacers) {
