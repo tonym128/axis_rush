@@ -74,6 +74,20 @@ export class Vehicle {
     this.minimapMarker = this.createMinimapMarker();
     this.scene.add(this.minimapMarker);
 
+    this.explosionPieces = [];
+    this.mesh.children.forEach(child => {
+      if (child instanceof THREE.Mesh) {
+        this.explosionPieces.push({
+          mesh: child,
+          originalPos: child.position.clone(),
+          originalRot: child.rotation.clone(),
+          velocity: new THREE.Vector3(),
+          angularVelocity: new THREE.Vector3(),
+          active: false
+        });
+      }
+    });
+
     this.boundingBox = new THREE.Box3();
   }
   
@@ -332,10 +346,47 @@ export class Vehicle {
   update(dt, track, inputs, otherRacers = [], spawnProjectile = null) {
     if (this.isExploded) {
       this.respawnTimer -= dt;
+      const totalTime = GAME_CONFIG.RESPAWN_TIME;
+      const timeElapsed = totalTime - this.respawnTimer;
+      const halfTime = totalTime * 0.5;
+
+      if (timeElapsed < halfTime) {
+        // Exploding phase
+        this.explosionPieces.forEach(p => {
+          p.mesh.position.add(p.velocity.clone().multiplyScalar(dt));
+          p.mesh.rotation.x += p.angularVelocity.x * dt;
+          p.mesh.rotation.y += p.angularVelocity.y * dt;
+          p.mesh.rotation.z += p.angularVelocity.z * dt;
+
+          // Bouncing off walls
+          const dist = p.mesh.position.length();
+          const limit = track.radius - 1;
+          if (dist > limit) {
+            const normal = p.mesh.position.clone().normalize().negate();
+            p.velocity.reflect(normal).multiplyScalar(0.6);
+            p.mesh.position.setLength(limit);
+          }
+        });
+      } else {
+        // Reassembling phase (reverse animation)
+        const factor = (this.respawnTimer) / halfTime; // 1 to 0
+        const ease = 1.0 - Math.pow(factor, 3); // 0 to 1
+        this.explosionPieces.forEach(p => {
+          p.mesh.position.lerp(p.originalPos, ease);
+          p.mesh.rotation.x = THREE.MathUtils.lerp(p.mesh.rotation.x, p.originalRot.x, ease);
+          p.mesh.rotation.y = THREE.MathUtils.lerp(p.mesh.rotation.y, p.originalRot.y, ease);
+          p.mesh.rotation.z = THREE.MathUtils.lerp(p.mesh.rotation.z, p.originalRot.z, ease);
+        });
+      }
+
       if (this.respawnTimer <= 0) {
         this.isExploded = false; this.energy = this.maxEnergy * 0.5; this.speed = 0;
         this.invulnerableTimer = GAME_CONFIG.RESPAWN_INVULNERABILITY;
-        this.mesh.visible = true; 
+        this.mesh.visible = true;
+        this.explosionPieces.forEach(p => {
+          p.mesh.position.copy(p.originalPos);
+          p.mesh.rotation.copy(p.originalRot);
+        });
         if (this.trailMesh.visible !== false) this.trailMesh.visible = true;
         if (this.minimapMarker.visible !== false) this.minimapMarker.visible = true;
         if (this.rankLabel.visible !== false) this.rankLabel.visible = true;
@@ -344,8 +395,7 @@ export class Vehicle {
       return;
     }
 
-    this.updateSlipstream(otherRacers);
-    if (this.bonusSpeed > 0) { this.bonusSpeed -= GAME_CONFIG.BOOST_DECAY * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
+    this.updateSlipstream(otherRacers);    if (this.bonusSpeed > 0) { this.bonusSpeed -= GAME_CONFIG.BOOST_DECAY * dt; if (this.bonusSpeed < 0) this.bonusSpeed = 0; }
     if (this.lap > 1 && inputs.boost && this.energy > 5) { 
       this.energy -= GAME_CONFIG.BOOST_ENERGY_CONSUMPTION * dt; 
       this.bonusSpeed = Math.max(this.bonusSpeed, GAME_CONFIG.MANUAL_BOOST_MIN_BONUS); 
@@ -414,7 +464,22 @@ export class Vehicle {
   explode() {
     this.isExploded = true;
     this.respawnTimer = GAME_CONFIG.RESPAWN_TIME;
-    this.mesh.visible = false;
+    this.mesh.visible = true; // Keep visible to show children exploding
+    this.explosionPieces.forEach(p => {
+      p.mesh.position.copy(p.originalPos);
+      p.mesh.rotation.copy(p.originalRot);
+      p.velocity.set(
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 50
+      );
+      p.angularVelocity.set(
+        Math.random() * 10,
+        Math.random() * 10,
+        Math.random() * 10
+      );
+    });
+
     this.trailMesh.visible = false;
     this.minimapMarker.visible = false;
     this.rankLabel.visible = false;
@@ -492,15 +557,7 @@ export class AI extends Vehicle {
 
   update(dt, track, player, otherRacers = [], spawnProjectile = null) {
     if (this.isExploded) {
-      this.respawnTimer -= dt;
-      if (this.respawnTimer <= 0) {
-        this.isExploded = false; this.energy = this.maxEnergy * 0.5; this.speed = 0; 
-        this.mesh.visible = true;
-        if (this.trailMesh.visible !== false) this.trailMesh.visible = true;
-        if (this.minimapMarker.visible !== false) this.minimapMarker.visible = true;
-        if (this.rankLabel.visible !== false) this.rankLabel.visible = true;
-        if (this.numberLabel.visible !== false) this.numberLabel.visible = true;
-      }
+      super.update(dt, track, { accelerate: false, brake: false, left: false, right: false, switch: false, fire: false }, otherRacers, spawnProjectile);
       return;
     }
 

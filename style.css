@@ -207,6 +207,42 @@ h2 {
   flex-shrink: 0;
 }
 
+#char-outro-pic {
+  width: 120px;
+  height: 120px;
+  border: 3px solid #0ff;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+  background: #111;
+  overflow: hidden;
+  margin-top: -30px;
+  z-index: 5;
+}
+
+#char-outro-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mini-portrait {
+  width: 80px;
+  height: 80px;
+  border: 2px solid #0ff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+  background: #111;
+  overflow: hidden;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 5;
+}
+
+.mini-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .story-img-container {
   width: 100%;
   aspect-ratio: 1 / 1;
