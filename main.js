@@ -392,11 +392,12 @@ class Game {
     }
   }
 
-  showComms(pilot, type) {
+  showComms(pilot, type, targetPilot = null) {
     const box = document.getElementById('comms-box');
     const name = document.getElementById('comms-name');
     const text = document.getElementById('comms-text');
     const portrait = document.getElementById('comms-portrait');
+    const targetPortrait = document.getElementById('comms-portrait-receiver');
     
     if (this._commsTimeout) clearTimeout(this._commsTimeout);
     
@@ -411,6 +412,15 @@ class Game {
     }
     
     portrait.innerHTML = `<img src="${pilot.portrait}" style="width:100%; height:100%; object-fit:cover;">`;
+    
+    if (targetPilot) {
+      targetPortrait.innerHTML = `<img src="${targetPilot.portrait}" style="width:100%; height:100%; object-fit:cover;">`;
+      targetPortrait.style.display = 'block';
+      box.style.borderRight = `8px solid ${targetPilot.color.getStyle()}`;
+    } else {
+      targetPortrait.style.display = 'none';
+      box.style.borderRight = `8px solid ${pilot.color.getStyle()}`;
+    }
     
     box.classList.add('active');
     this._commsTimeout = setTimeout(() => {
@@ -1532,7 +1542,7 @@ class Game {
       // Player was overtaken
       const overtaker = allRacers[this.player.rank - 2]; // The one now ahead of player
       if (overtaker && !overtaker.isPlayer) {
-        this.showComms(overtaker.pilot, 'onOvertake');
+        this.showComms(overtaker.pilot, 'onOvertake', this.player.pilot);
       }
     }
   }

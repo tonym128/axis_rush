@@ -102,7 +102,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Target locked. Hegemony sends its regards.", "Splash one. Stay in my sights.", "Direct hit. You're losing altitude.", "That's how we do it in the core.", "Impact confirmed. Regret is optional."],
       onOvertake: ["Step aside, rookie. Professional coming through.", "Out of my way. I've got a pardon to earn.", "You're in my slipstream. Use it while it lasts.", "Passing on the left. Don't blink.", "Too slow. Your engine's coughing."],
-      onExplode: ["Mayday! Core failure! Ejecting!", "Hegemony... I... failed...", "System critical! Abandoning craft!", "Taking this one to the grave!", "I'll see you in the next life, pilot!"]
+      onExplode: ["Mayday! Core failure! Ejecting!", "Hegemony... I... failed...", "System critical! Abandoning craft!", "Taking this one to the grave!", "I'll see you in the next life, pilot!"],
+      onCollide: ["Watch your spacing, pilot!", "Don't scratch the hull. Command is watching.", "Maintain formation or get out of the way.", "Check your six. You're drifting.", "Aggressive maneuvers? Not on my watch."]
     } 
   },
   { id: 1, name: "LEXI NOVA", faction: "UNDERGROUND", corporation: "The Glitch Syndicate",
@@ -119,7 +120,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Glitch in your system? That was me.", "Packet loss detected. In your hull.", "I just rewrote your defensive code.", "Try rebooting. Oh wait, you can't.", "Firewall breached. Direct impact."],
       onOvertake: ["Your racing line is as old as your hardware.", "I'm optimizing the route. Follow me.", "Slipping past your sensors.", "You're lagging. Check your connection.", "Executing bypass. See ya."],
-      onExplode: ["Critical error! System rebooting...", "Kernel panic! I'm going down!", "Signal lost... connection... terminated...", "Deleting drive... before... impact...", "The virus... must... survive..."]
+      onExplode: ["Critical error! System rebooting...", "Kernel panic! I'm going down!", "Signal lost... connection... terminated...", "Deleting drive... before... impact...", "The virus... must... survive..."],
+      onCollide: ["Hey! You're corrupting my telemetry!", "Watch the hardware!", "Collision detected. My paint job!", "Packet collision! Back off.", "You're interfering with the upload!"]
     }
   },
   { id: 2, name: "DUKE VANDAL", faction: "THE VOID", corporation: "Void-Belt Scavenger Union",
@@ -136,7 +138,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Scrap metal! That's all you are!", "Taste the kinetic energy!", "I'll crush you like an asteroid!", "Vandalized! Hahaha!", "Built for war, not just racing!"],
       onOvertake: ["Eat my dust, weakling!", "Get out of the way or get flattened!", "Powering through! Move it!", "Your craft is a toy compared to this!", "I'm the king of the belt!"],
-      onExplode: ["I'll take you with me to the VOID!", "No! This engine was a masterpiece!", "I'll be back... and I'll be heavier!", "Cracked hull! Losing pressure!", "The VOID... calls..."]
+      onExplode: ["I'll take you with me to the VOID!", "No! This engine was a masterpiece!", "I'll be back... and I'll be heavier!", "Cracked hull! Losing pressure!", "The VOID... calls..."],
+      onCollide: ["Out of the way or get flattened!", "You're just a speed bump!", "Move it or lose it!", "MASS WINS every time!", "Like hitting a fly on a windshield!"]
     }
   },
   { id: 3, name: "SIRA FLUX", faction: "UNDERGROUND", corporation: "The Flux Resistance",
@@ -153,7 +156,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["The resistance thanks you for the energy.", "Impact for the cause.", "A necessary disruption.", "Your shields are failing, like your faction.", "Static in the air. That was me."],
       onOvertake: ["Slipping through the cracks.", "The flow is with me today.", "You're stationary in a moving world.", "Passing into the future.", "Resistance is fast. Get used to it."],
-      onExplode: ["Fading... into the nebula...", "For the... resistance...", "Energy... dispersing...", "My light... goes... out...", "Transmission... ending..."]
+      onExplode: ["Fading... into the nebula...", "For the... resistance...", "Energy... dispersing...", "My light... goes... out...", "Transmission... ending..."],
+      onCollide: ["Careful, don't disrupt the flow.", "We have a common goal. Don't waste it.", "Disrupting the resistance, are we?", "Stability is key, pilot.", "Watch your vector."]
     }
   },
   { id: 4, name: "JAXON VOLT", faction: "HEGEMONY", corporation: "Volt-Dynamics MegaCorp",
@@ -170,7 +174,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Calculating insurance premiums... you're expensive.", "That's a breach of contract.", "Market correction applied.", "You're a liability now.", "Stock in your victory is falling."],
       onOvertake: ["Pure corporate efficiency.", "My sponsors are watching. Look good.", "Acquiring your position.", "Hostile takeover in progress.", "Scaling past the competition."],
-      onExplode: ["Contract... terminated.", "Severance package... activated.", "Liquidation... immi...nent...", "I'm... filing... for... bankruptcy...", "Budget... cut..."]
+      onExplode: ["Contract... terminated.", "Severance package... activated.", "Liquidation... immi...nent...", "I'm... filing... for... bankruptcy...", "Budget... cut..."],
+      onCollide: ["That's an insurance liability.", "You're devaluing my assets!", "Market interference detected.", "Keep your distance, low-tier pilot.", "Watch the branding! Do you know how much this paint costs?"]
     }
   },
   { id: 5, name: "ZARA QUINN", faction: "UNDERGROUND", corporation: "The Dust-Rim Drifters",
@@ -187,7 +192,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Salvage rights are mine!", "That'll fetch a good price as scrap.", "I'm stripping your shields!", "Scavenger's luck!", "Found a weak spot. Poking it."],
       onOvertake: ["Too slow for the scavengers.", "Checking your wake for debris.", "I've seen faster junk heaps.", "I'm on a mission, move!", "Nothing personal, just credits."],
-      onExplode: ["Not today... I still have a world to buy!", "My home... I'm sorry...", "Scrap... that's all I am now...", "Engine's... gone... cold...", "The payout... so... close..."]
+      onExplode: ["Not today... I still have a world to buy!", "My home... I'm sorry...", "Scrap... that's all I am now...", "Engine's... gone... cold...", "The payout... so... close..."],
+      onCollide: ["Hey! Watch the scrap!", "You want a piece of me? Literally?", "Don't scratch the payout!", "I've survived bigger hits in the mines!", "Back off, I'm working here!"]
     }
   },
   { id: 6, name: "KORVATH", faction: "THE VOID", corporation: "The Technosis Cult",
@@ -204,7 +210,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["Kinetic impact detected. Response: Aggression.", "Analyzing structural failure... yours.", "Precision strike executed.", "Data gathered: you are fragile.", "Efficiency increase: 12%."],
       onOvertake: ["Efficiency optimized. Passing subject.", "Vector adjusted. Proceeding ahead.", "Your velocity is insufficient.", "Calculating bypass... complete.", "Minimal effort required."],
-      onExplode: ["Disconnecting... from... physical... shell...", "Logic error... unable... to... recover...", "Data... upload... failed...", "Hardware... failure... critical...", "Binary... sunset..."]
+      onExplode: ["Disconnecting... from... physical... shell...", "Logic error... unable... to... recover...", "Data... upload... failed...", "Hardware... failure... critical...", "Binary... sunset..."],
+      onCollide: ["Kinetic interaction suboptimal.", "Structural integrity compromised.", "Analyzing impact vector.", "Unplanned contact detected.", "Data stream interrupted by physical collision."]
     }
   },
   { id: 7, name: "NYX SHADOW", faction: "THE VOID", corporation: "The Nihil Ops",
@@ -221,7 +228,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["You can't hit what you can't see.", "A phantom strike.", "Fading out, hitting in.", "Did you feel that? I didn't.", "Your records show an impact."],
       onOvertake: ["A shadow in your wake.", "I was never here.", "Already gone.", "Blink and I'm ahead.", "Silent and swift."],
-      onExplode: ["Returning to the dark.", "The file... is... deleted...", "Vanishing... for... good...", "Cloak... failing...", "No... traces... left..."]
+      onExplode: ["Returning to the dark.", "The file... is... deleted...", "Vanishing... for... good...", "Cloak... failing...", "No... traces... left..."],
+      onCollide: ["Interaction logged.", "A ripple in the shadow.", "You felt that? I barely did.", "Tactile contact was not part of the plan.", "Visibility increased. Undesirable."]
     }
   },
   { id: 8, name: "GHOST", faction: "THE VOID", corporation: "The Unknown Anomaly",
@@ -238,7 +246,8 @@ export const PILOTS = [
     dialogue: { 
       onHit: ["A temporary anomaly. I will persist.", "Your code is leaking.", "Impact in the simulation.", "Defragmenting your hull.", "Glitch confirmed."],
       onOvertake: ["Your reality is lagging.", "I've seen this frame before.", "Breaking the loop.", "Beyond your perception.", "The architecture allows this."],
-      onExplode: ["Simulation... corrupted... [REDACTED]", "End of... line...", "Respawning... in... null...", "Error... code... zero...", "Goodbye... world..."]
+      onExplode: ["Simulation... corrupted... [REDACTED]", "End of... line...", "Respawning... in... null...", "Error... code... zero...", "Goodbye... world..."],
+      onCollide: ["Collision in the simulation.", "Frame skip! That hurt.", "The architecture is unstable.", "Unplanned physical interaction.", "Recalculating collision box."]
     }
   }
 ];

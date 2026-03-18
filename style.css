@@ -1121,32 +1121,41 @@ button.selected {
   top: 20px;
   right: 20px;
   display: flex;
+  align-items: center;
   gap: 15px;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   border: 2px solid #0ff;
   border-right: 8px solid #0ff;
   padding: 10px;
-  width: 350px;
-  transform: translateX(450px);
+  min-width: 350px;
+  transform: translateX(500px);
   transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: none;
+  z-index: 1000;
 }
 
 #comms-box.active {
   transform: translateX(0);
 }
 
-#comms-portrait {
-  width: 50px;
-  height: 50px;
-  border: 1px solid #0ff;
+#comms-portrait, #comms-portrait-receiver {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #0ff;
   background: #111;
   flex-shrink: 0;
   overflow: hidden;
 }
 
+#comms-portrait-receiver {
+  display: none;
+  border: 2px solid #f0f;
+}
+
 #comms-portrait canvas,
-#comms-portrait img {
+#comms-portrait img,
+#comms-portrait-receiver canvas,
+#comms-portrait-receiver img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1156,6 +1165,7 @@ button.selected {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  flex-grow: 1;
 }
 
 #comms-name {

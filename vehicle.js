@@ -260,7 +260,7 @@ export class Vehicle {
         }
       }
     } else if (attacker && attacker.isPlayer) {
-      if (window.gameInstance) window.gameInstance.showComms(this.pilot, 'onHit');
+      if (window.gameInstance) window.gameInstance.showComms(this.pilot, 'onHit', attacker.pilot);
     }
     if (attacker && attacker !== this) { const id = attacker.pilot.id; this.rivalries[id] = (this.rivalries[id] || 0) + 1; }
   }
@@ -505,6 +505,18 @@ export class Vehicle {
           this.shakeAmount = 1.5; other.shakeAmount = 1.5; 
           this.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, other, otherRacers); 
           other.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, this, otherRacers);
+          
+          // Trigger collision comms if player involved
+          if ((this.isPlayer || other.isPlayer) && window.gameInstance) {
+            const now = performance.now();
+            if (!this._lastCollideComms || now - this._lastCollideComms > 5000) {
+              const sender = this.isPlayer ? other : this;
+              const receiver = this.isPlayer ? this : other;
+              window.gameInstance.showComms(sender.pilot, 'onCollide', receiver.pilot);
+              this._lastCollideComms = now;
+              other._lastCollideComms = now;
+            }
+          }
         }
       }
     }
