@@ -46,6 +46,9 @@ export class Vehicle {
     this.invulnerableTimer = 0;
     this.rivalries = {}; 
     
+    this._lapStartTime = 0;
+    this._lastRecordedLap = 1;
+    
     this.weapon = null; 
     this.mesh = this.createMesh();
     this.scene.add(this.mesh);

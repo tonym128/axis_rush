@@ -1522,27 +1522,30 @@ class Game {
 
     const lb = document.getElementById('hud-leaderboard'); lb.innerHTML = '<div style="color:#0ff; font-weight:bold; margin-bottom:10px; border-bottom:1px solid rgba(0,255,255,0.3); padding-bottom:5px; font-size:0.8rem; letter-spacing:2px;">POSITIONS</div>';
 
+    const now = performance.now();
+    const leader = allRacers[0];
+    const leaderTotalTime = (leader.totalTime || 0) + (now - leader._lapStartTime);
+
     allRacers.forEach((r, idx) => {
       const row = document.createElement('div'); 
       row.className = `hud-lb-row ${r.isPlayer ? 'player' : ''}`;
       if (!r.isPlayer && r.isHuman) row.style.color = '#0f0'; 
 
       let infoText = "";
-      if (r.isPlayer) {
-        const currentLapTime = performance.now() - this.player._lapStartTime;
-        infoText = `${(currentLapTime / 1000).toFixed(2)}s`;
+      if (idx === 0) {
+        // The Leader
+        infoText = `${(leaderTotalTime / 1000).toFixed(2)}s`;
       } else {
-        if (r.totalTime !== undefined && r.totalTime > 0) {
-          const myTime = performance.now() - this.player._lapStartTime;
-          const gap = (r.totalTime - myTime) / 1000;
-          infoText = gap > 0 ? `+${gap.toFixed(2)}s` : `${gap.toFixed(2)}s`;
-        } else {
-          const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
-          infoText = gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`;
-        }
+        // Followers: Calculate gap to leader
+        // Distance in track units (total length is 12000)
+        const distToLeader = (leader.lapProgress - r.lapProgress) * GAME_CONFIG.TRACK_TOTAL_LENGTH;
+        // Estimate time gap: Distance / Speed (convert KM/H-ish units to units/sec if needed, 
+        // but here speed is already units/sec-ish). Use a floor of 100 for stable estimation.
+        const gap = distToLeader / Math.max(100, r.speed);
+        infoText = `+${gap.toFixed(2)}s`;
       }
 
-      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span style="width:80px; text-align:right;">${infoText}</span>`;
+      row.innerHTML = `<span>${idx + 1}. ${r.pilot.name}</span><span style="width:80px; text-align:right;">${infoText}</span>`;
       lb.appendChild(row);
     });
 
