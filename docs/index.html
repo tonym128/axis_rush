@@ -13,8 +13,8 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DSgr8nDT.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-dtvnLu5M.css">
+  <script type="module" crossorigin src="./assets/index-DDNDUGVn.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CpGB189c.css">
 </head>
 <body>
   <div id="portrait-message">
@@ -310,15 +310,22 @@
       <!-- Track Select (Single Race Only) -->
       <div id="track-select" class="screen">
         <h2>SELECT TRACK</h2>
-        <div class="menu-section">
-          <div class="list-container" id="map-select"></div>
-        </div>
-        <div class="menu-section">
-          <h3>DIFFICULTY</h3>
-          <div class="button-group" id="diff-select">
-            <button class="selected" data-val="0">Novice</button>
-            <button data-val="1">Pro</button>
-            <button data-val="2">Elite</button>
+        <div id="map-selection-flow">
+          <div class="selection-left">
+            <div class="list-container" id="map-select"></div>
+          </div>
+          <div class="selection-middle">
+            <div id="map-preview-placeholder"></div>
+          </div>
+          <div class="selection-right">
+            <div class="menu-section">
+              <h3>DIFFICULTY</h3>
+              <div class="button-group" id="diff-select">
+                <button class="selected" data-val="0">Novice</button>
+                <button data-val="1">Pro</button>
+                <button data-val="2">Elite</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="button-group">

@@ -80,7 +80,7 @@ h2 {
   letter-spacing: 3px;
 }
 
-#car-selection-flow {
+#car-selection-flow, #map-selection-flow {
   display: flex;
   width: 95%;
   max-width: 1400px;
@@ -97,6 +97,15 @@ h2 {
   flex-direction: column;
   justify-content: center;
   z-index: 10;
+  align-items: stretch;
+}
+
+#car-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-height: none !important;
 }
 
 .selection-middle {
@@ -107,7 +116,7 @@ h2 {
   pointer-events: none;
 }
 
-#car-preview-placeholder {
+#car-preview-placeholder, #map-preview-placeholder {
   width: 100%;
   height: 100%;
 }
@@ -166,10 +175,10 @@ h2 {
   align-items: stretch;
   justify-content: center;
   gap: 30px;
-  width: 95%;
-  max-width: 1200px;
+  width: 98%;
+  max-width: 1400px;
   flex-grow: 1;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   overflow: hidden;
 }
 
@@ -186,6 +195,7 @@ h2 {
   display: flex;
   flex-direction: column;
   text-align: left !important;
+  max-width: none !important;
 }
 
 .char-preview-panel {
@@ -767,14 +777,16 @@ button.selected {
 .stat-row {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 2px;
+  width: 100%;
 }
 
 .stat-label {
   font-size: 0.7rem;
   color: #aaa;
   font-weight: bold;
+  text-align: center;
 }
 
 .stat-bar-bg {
@@ -1068,7 +1080,6 @@ body.is-mobile #mobile-controls {
   .info-box {
     font-size: 0.9rem;
     padding: 10px;
-    max-height: 40vh;
   }
   
   .tutorial-box {
@@ -1135,7 +1146,6 @@ body.is-mobile #mobile-controls {
     font-size: 0.85rem;
     padding: 8px;
     margin: 5px 0;
-    max-height: 35vh;
   }
   
   .main-btn {

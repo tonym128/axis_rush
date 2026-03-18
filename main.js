@@ -800,6 +800,9 @@ class Game {
           if (nextBtn) {
             nextBtn.innerText = camp.inProgress ? "CONTINUE CAMPAIGN" : "START NEW CAMPAIGN";
           }
+        } else {
+          const nextBtn = document.getElementById('btn-char-next-screen');
+          if (nextBtn) nextBtn.innerText = "NEXT: VEHICLE";
         }
 
         const upg0 = pData.upgrades[0], upg1 = pData.upgrades[1], upg2 = pData.upgrades[2];
@@ -815,12 +818,12 @@ class Game {
         `;
 
         info.innerHTML = `
-          <div class="info-box story-viewport" style="max-width: none; margin: 0;">
+          <div class="info-box story-viewport" style="max-width: none; margin: 0; flex: 1;">
             <div style="color:${pilot.color.getStyle()}; font-weight:bold; margin-bottom:10px; font-size: 1.2rem;">${pilot.faction}</div>
-            <div style="font-size:1rem; margin-bottom:15px; line-height:1.6; text-align:left; flex: 1; overflow-y:auto; padding-right: 10px;">${pilot.bg}</div>
+            <div style="font-size:1rem; margin-bottom:15px; line-height:1.6; text-align:left; flex: 1; overflow-y:auto; padding-right: 10px; min-height: 0;">${pilot.bg}</div>
             <div style="font-style:italic; color:#ff0; font-size:0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">GOAL: ${pilot.goal}</div>
           </div>
-          <div style="display:flex; gap:10px; width:100%; justify-content:center;">
+          <div style="display:flex; gap:10px; width:100%; justify-content:center; flex-shrink: 0;">
             ${statusHtml}
             ${upgHtml}
           </div>
@@ -930,8 +933,12 @@ class Game {
     };
 
     info.innerHTML = `
-      <div style="margin-bottom:10px; text-align: left; width: 100%;">${VEHICLES[type].desc}</div>
-      ${this.renderStatBars(baseStats, currentStats)}
+      <div style="margin-bottom:20px; text-align: center; width: 100%; font-size: 1.1rem; line-height: 1.6; flex: 1; display: flex; align-items: center;">
+        ${VEHICLES[type].desc}
+      </div>
+      <div style="width: 100%;">
+        ${this.renderStatBars(baseStats, currentStats)}
+      </div>
     `;
 
     this.previewVehicle = new Vehicle(this.scene, type, true, PILOTS[this.playerPilotId], upg);
@@ -939,19 +946,26 @@ class Game {
     this.previewVehicle.mesh.traverse(obj => obj.layers.set(1)); this.previewVehicle.mesh.position.set(0, 0, 0); this.previewVehicle.mesh.scale.set(5, 5, 5);    
     // Dynamic showroom lighting
     this.previewLights = new THREE.Group();
-    const amb = new THREE.AmbientLight(0xffffff, 1.5); amb.layers.enable(1);
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 2.0); hemi.layers.enable(1);
-    const pl1 = new THREE.PointLight(0xffaa00, 500, 100); pl1.position.set(20, 20, 20); pl1.layers.enable(1);
-    const pl2 = new THREE.PointLight(0x00aaff, 500, 100); pl2.position.set(-20, 10, -20); pl2.layers.enable(1);
-    const pl3 = new THREE.PointLight(0xffffff, 300, 100); pl3.position.set(0, -10, 20); pl3.layers.enable(1);
-    this.previewLights.add(amb, hemi, pl1, pl2, pl3);
+    const amb = new THREE.AmbientLight(0xffffff, 3.0); amb.layers.enable(1);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 4.0); hemi.layers.enable(1);
+    const pl1 = new THREE.PointLight(0xffffff, 1000, 100); pl1.position.set(20, 20, 20); pl1.layers.enable(1);
+    const pl2 = new THREE.PointLight(0xffffff, 1000, 100); pl2.position.set(-20, 10, -20); pl2.layers.enable(1);
+    const pl3 = new THREE.PointLight(0xffffff, 800, 100); pl3.position.set(0, -10, 20); pl3.layers.enable(1);
+    const pl4 = new THREE.PointLight(0xffffff, 1200, 150); pl4.position.set(0, 30, 0); pl4.layers.enable(1);
+    this.previewLights.add(amb, hemi, pl1, pl2, pl3, pl4);
     this.scene.add(this.previewLights);
     this.onResize();
   }
 
   clearCarPreview() {
     if (this.previewVehicle) { this.scene.remove(this.previewVehicle.mesh); this.scene.remove(this.previewVehicle.trailMesh); this.scene.remove(this.previewVehicle.slipstreamMesh); this.scene.remove(this.previewVehicle.rankLabel); this.scene.remove(this.previewVehicle.numberLabel); this.scene.remove(this.previewVehicle.minimapMarker); this.scene.remove(this.previewVehicle.blurLines); this.previewVehicle = null; }
-    if (this.previewLights) { this.scene.remove(this.previewLights); this.previewLights = null; }
+    if (this.previewLights) {
+      this.previewLights.traverse(child => {
+        if (child.dispose) child.dispose();
+      });
+      this.scene.remove(this.previewLights); 
+      this.previewLights = null; 
+    }
   }
   
   setupInputs() {
@@ -2101,10 +2115,35 @@ class Game {
     const carSelect = document.getElementById('car-select'); const isCarSelect = carSelect.classList.contains('active');
     const isRacing = (this.state === 'RACING' || this.state === 'FINISHED' || this.state === 'STARTING');
     if ((isMapSelect || isRacing || isCarSelect) && this.state !== 'PAUSED') {
-      const mapSize = Math.min(window.innerWidth, window.innerHeight) * (isMapSelect || isCarSelect ? 0.4 : 0.25);
-      const margin = 20, statsHeight = (isMapSelect || isCarSelect) ? 0 : 220;
-      const x = (isMapSelect || isCarSelect) ? (window.innerWidth - mapSize - 50) : margin;
-      const y = (isMapSelect || isCarSelect) ? (window.innerHeight / 2 - mapSize / 2) : (margin + statsHeight);
+      let x, y, mapSize;
+      
+      if (isCarSelect || isMapSelect) {
+        const placeholderId = isCarSelect ? 'car-preview-placeholder' : 'map-preview-placeholder';
+        const placeholder = document.getElementById(placeholderId);
+        if (placeholder) {
+          const rect = placeholder.getBoundingClientRect();
+          // Convert DOM coordinates (top-left) to WebGL coordinates (bottom-left)
+          // We need to account for the fact that the renderer size might be different from window size if scaled,
+          // but here they should match.
+          mapSize = Math.min(rect.width, rect.height);
+          if (isMapSelect) mapSize = rect.height; // Map select usually wants to fill height
+          
+          x = rect.left + (rect.width - mapSize) / 2;
+          y = window.innerHeight - rect.bottom + (rect.height - mapSize) / 2;
+        } else {
+          // Fallback
+          mapSize = Math.min(window.innerWidth, window.innerHeight) * (isCarSelect ? 0.6 : 0.4);
+          x = window.innerWidth / 2 - mapSize / 2;
+          if (isMapSelect) x = window.innerWidth - mapSize - 50;
+          y = window.innerHeight / 2 - mapSize / 2;
+        }
+      } else {
+        // Racing minimap
+        mapSize = Math.min(window.innerWidth, window.innerHeight) * 0.25;
+        x = 20;
+        y = 20 + 220; // margin + statsHeight
+      }
+      
       this.renderer.setViewport(x, y, mapSize, mapSize); this.renderer.setScissor(x, y, mapSize, mapSize); this.renderer.setScissorTest(true); 
       this.renderer.setClearColor(0x000000, 1);
       this.renderer.clear();
