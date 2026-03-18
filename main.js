@@ -11,7 +11,8 @@ import {
   VEHICLE_BASE_STATS, 
   STAT_MAX,
   GAME_CONFIG,
-  DIFFICULTY_SETTINGS
+  DIFFICULTY_SETTINGS,
+  STORY_DATA
 } from './constants.js';
 import { 
   EffectComposer, 
@@ -50,6 +51,7 @@ class Game {
     this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 0; this.carouselIndex = 0;
     this.currentScreenId = 'main-menu';
     this.campaignTrackIndex = 0; this.campaignScores = {};
+    this.lastPlayerRank = 1;
     // Per-pilot data: { pilotId: { campaign: { inProgress, trackIndex, scores, vehicleId, difficulty }, upgrades: { vehicleType: { speed, handling, armor } } } }
     this.pilotData = {};
     this.player = null; this.ais = []; this.track = null; this.previewTrack = null; this.previewSky = null; this.previewVehicle = null; this.weaponSystem = null;
@@ -652,6 +654,7 @@ class Game {
     
     document.getElementById('btn-league-intro-next').addEventListener('click', () => { this.showCharIntro(); });
     document.getElementById('btn-char-intro-start').addEventListener('click', () => { this.showLeagueStandings(); });
+    document.getElementById('btn-story-inter-next').addEventListener('click', () => { this.showLeagueStandings(); });
     document.getElementById('btn-char-outro-finish').addEventListener('click', () => { this.showMenu(); });
 
     document.getElementById('btn-gallery').addEventListener('click', () => { this.showScreen('gallery-menu'); this.renderGallery(); });
@@ -777,16 +780,16 @@ class Game {
       }); 
     });
 
-    document.getElementById('restart-btn').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') this.showMenu(); else this.showLeagueStandings(); });
+    document.getElementById('restart-btn').addEventListener('click', () => { 
+      if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') this.showMenu(); 
+      else this.showStoryInterstitial(this.playerPilotId, this.campaignTrackIndex - 1, this.lastPlayerRank); 
+    });
     document.getElementById('btn-league-next').addEventListener('click', () => { 
       if (this.campaignTrackIndex < MAPS.length) this.startRace(); 
       else {
         const sortedIds = Object.keys(this.campaignScores).sort((a,b) => this.campaignScores[b] - this.campaignScores[a]);
-        if (parseInt(sortedIds[0]) === this.playerPilotId) {
-          this.showCharOutro();
-        } else {
-          this.showMenu();
-        }
+        const playerRank = sortedIds.indexOf(this.playerPilotId.toString()) + 1;
+        this.showCharOutro(playerRank);
       }
     });
     document.getElementById('btn-league-back').addEventListener('click', () => { this.showMenu(); });
@@ -1276,10 +1279,19 @@ class Game {
     this.showScreen('char-intro');
   }
 
-  showCharOutro() {
+  showCharOutro(playerRank = 1) {
     const pilot = PILOTS[this.playerPilotId];
-    document.getElementById('char-outro-name-title').innerText = `VICTORIOUS: ${pilot.name}`;
-    document.getElementById('char-outro-text').innerText = pilot.outro;
+    document.getElementById('char-outro-name-title').innerText = `CAMPAIGN COMPLETE: ${pilot.name}`;
+    
+    let text = pilot.outros.rankElse;
+    if (playerRank === 1) {
+      text = pilot.outros.rank1;
+      document.getElementById('char-outro-name-title').innerText = `CHAMPION: ${pilot.name}`;
+    } else if (playerRank <= 3) {
+      text = pilot.outros.rank3;
+    }
+    
+    document.getElementById('char-outro-text').innerText = text;
     const pic = document.getElementById('char-outro-pic'); pic.innerHTML = `<img src="${pilot.portrait}">`;
     
     const imgName = pilot.name.toLowerCase().replace(/ /g, '-');
@@ -1287,6 +1299,41 @@ class Game {
     this.unlockGalleryImage(`./images/${imgName}-outro.jpg`);
 
     this.showScreen('char-outro');
+  }
+
+  showStoryInterstitial(pilotId, trackIdx, playerRank) {
+    const pilot = PILOTS[pilotId];
+    const story = STORY_DATA[pilotId];
+    const track = MAPS[trackIdx];
+    
+    document.getElementById('story-inter-title').innerText = `${track.name} COMPLETE`;
+    
+    let outcome = "BELOW TOP 3";
+    let text = "The race didn't go as planned. Your faction is demanding better results.";
+    let img = `./images/${pilot.name.toLowerCase().replace(/ /g, '-')}-intro.jpg`;
+    
+    if (story && story.tracks[trackIdx]) {
+      const data = story.tracks[trackIdx];
+      if (playerRank === 1) {
+        outcome = "VICTORY";
+        text = data.rank1;
+      } else if (playerRank <= 3) {
+        outcome = "TOP 3";
+        text = data.rank3;
+      } else {
+        text = data.rankElse;
+      }
+      if (data.img) img = data.img;
+    }
+    
+    document.getElementById('story-inter-outcome').innerText = outcome;
+    document.getElementById('story-inter-text').innerText = text;
+    const pic = document.getElementById('story-inter-pic'); pic.innerHTML = `<img src="${pilot.portrait}">`;
+    
+    this.loadStoryImage('story-inter-img', 'story-inter-img-container', img);
+    this.unlockGalleryImage(img);
+    
+    this.showScreen('story-interstitial');
   }
 
   continueCampaign() {
@@ -1704,6 +1751,8 @@ class Game {
       }
       lapStats += `LAP ${i+1}: ${(t/1000).toFixed(2)}s${diffStr}\n`;
     });
+
+    this.lastPlayerRank = playerRank;
 
     let statsText = `YOU FINISHED IN POSITION #${playerRank}\n\n${lapStats}\nCREDITS EARNED: ${earnedCredits}\nTOTAL CREDITS: ${this.credits}`;
     if (this.gameMode === 'TIME_TRIAL') {
