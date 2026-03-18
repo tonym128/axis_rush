@@ -859,7 +859,7 @@ class Game {
         if (this.gameMode === 'CAMPAIGN') {
           const nextTrack = camp.inProgress ? (MAPS[camp.trackIndex]?.name || "COMPLETE") : "NOT STARTED";
           statusHtml = `
-            <div class="info-box status-viewport" style="flex:1;">
+            <div class="sub-info-box status-viewport" style="flex:1;">
               <div style="color:#f0f; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">CAMPAIGN STATUS</div>
               <div style="font-size:0.9rem;">PROGRESS: ${camp.inProgress ? `${camp.trackIndex+1}/${MAPS.length}` : '0/10'}</div>
               <div style="font-size:0.9rem;">NEXT: ${nextTrack}</div>
@@ -877,7 +877,7 @@ class Game {
 
         const upg0 = pData.upgrades[0], upg1 = pData.upgrades[1], upg2 = pData.upgrades[2];
         const upgHtml = `
-          <div class="info-box upgrades-viewport" style="flex:1;">
+          <div class="sub-info-box upgrades-viewport" style="flex:1;">
             <div style="color:#0ff; font-weight:bold; font-size:0.8rem; margin-bottom:5px;">INSTALLED UPGRADES</div>
             <div style="font-size:0.7rem; color:#aaa; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
               <div>L: S${upg0.speed} H${upg0.handling} A${upg0.armor}</div>
@@ -888,12 +888,12 @@ class Game {
         `;
 
         info.innerHTML = `
-          <div class="info-box story-viewport" style="max-width: none; margin: 0; flex: 1;">
+          <div class="story-viewport" style="max-width: none; margin: 0; flex: 1; display: flex; flex-direction: column;">
             <div style="color:${pilot.color.getStyle()}; font-weight:bold; margin-bottom:10px; font-size: 1.2rem;">${pilot.faction}</div>
             <div style="font-size:1rem; margin-bottom:15px; line-height:1.6; text-align:left; flex: 1; overflow-y:auto; padding-right: 10px; min-height: 0;">${pilot.bg}</div>
             <div style="font-style:italic; color:#ff0; font-size:0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">GOAL: ${pilot.goal}</div>
           </div>
-          <div style="display:flex; gap:10px; width:100%; justify-content:center; flex-shrink: 0;">
+          <div style="display:flex; gap:10px; width:100%; justify-content:center; flex-shrink: 0; margin-top: 15px;">
             ${statusHtml}
             ${upgHtml}
           </div>

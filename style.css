@@ -423,35 +423,58 @@ h2 {
 }
 
 button {
-  background: transparent;
+  background: rgba(0, 255, 255, 0.05);
   color: #fff;
-  border: 2px solid #555;
-  padding: 10px 20px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  padding: 12px 24px;
   font-size: 1rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   text-transform: uppercase;
   font-weight: bold;
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  letter-spacing: 1px;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: 0.5s;
 }
 
 button:hover {
   border-color: #0ff;
   color: #0ff;
-  box-shadow: 0 0 10px #0ff inset;
+  background: rgba(0, 255, 255, 0.15);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+button:hover::before {
+  left: 100%;
 }
 
 button.focused {
   border-color: #fff;
   color: #fff;
   background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 15px #fff;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
   outline: none;
+  transform: scale(1.05);
 }
 
 button.selected {
   background: #0ff;
   color: #000;
   border-color: #0ff;
+  box-shadow: 0 0 30px #0ff;
 }
 
 #main-menu {
@@ -483,12 +506,13 @@ button.selected {
 }
 
 .menu-story-box {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 10, 15, 0.8);
   border: 1px solid rgba(0, 255, 255, 0.4);
-  padding: 40px;
-  max-width: 550px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  padding: 45px;
+  max-width: 600px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 255, 255, 0.1);
+  clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
 }
 
 .lore-text {
@@ -523,14 +547,16 @@ button.selected {
 }
 
 #main-menu .main-btn {
-  width: 350px;
+  width: 380px;
   text-align: left;
-  padding: 12px 25px;
-  margin-top: 0.8rem;
+  padding: 15px 30px;
+  margin-top: 1rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: rgba(255, 0, 255, 0.05);
+  border-left: 4px solid #f0f;
 }
 
 #main-menu .main-btn:nth-child(1) { margin-left: 280px; }
@@ -543,37 +569,59 @@ button.selected {
 #main-menu .main-btn:nth-child(8) { margin-left: 0px; }
 
 #main-menu .main-btn:hover {
-  transform: translateX(15px);
-  background: #f0f;
-  color: #000;
+  padding-left: 45px;
+  transform: translateX(10px);
+  background: rgba(255, 0, 255, 0.2);
+  color: #fff;
 }
 
 .main-btn {
   margin-top: 1rem;
   font-size: 1.5rem;
-  border-color: #f0f;
+  border-color: rgba(255, 0, 255, 0.5);
   color: #f0f;
-  padding: 15px 30px;
+  padding: 15px 35px;
+  clip-path: polygon(5% 0, 100% 0, 100% 75%, 95% 100%, 0 100%, 0 25%);
 }
 
 .main-btn:hover {
-  background: #f0f;
-  color: #000;
-  box-shadow: 0 0 20px #f0f;
+  background: rgba(255, 0, 255, 0.2);
+  color: #fff;
+  border-color: #f0f;
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.6);
 }
 
 .info-box {
-  border: 1px solid #0ff;
-  background: rgba(0, 255, 255, 0.1);
-  padding: 15px;
-  margin: 8px 0;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  background: linear-gradient(135deg, rgba(0, 20, 20, 0.85) 0%, rgba(0, 5, 5, 0.95) 100%);
+  padding: 20px;
+  margin: 12px 0;
   max-width: 600px;
   width: 100%;
   text-align: center;
   min-height: 40px;
   font-size: 1rem;
-  line-height: 1.4;
-  overflow-y: auto;
+  line-height: 1.6;
+  backdrop-filter: blur(15px);
+  position: relative;
+  clip-path: polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%);
+  box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.info-box::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.03) 3px);
+  pointer-events: none;
+}
+
+.sub-info-box {
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  padding: 15px;
+  border-radius: 4px;
+  clip-path: polygon(0 0, 98% 0, 100% 10%, 100% 100%, 2% 100%, 0 90%);
 }
 
 #char-info {
