@@ -13,8 +13,8 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-BT_g3Iwh.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CpGB189c.css">
+  <script type="module" crossorigin src="./assets/index-BhBVpe2J.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DaZ9PSFt.css">
 </head>
 <body>
   <div id="portrait-message">
@@ -27,15 +27,34 @@
     <div id="ui-layer">
       <!-- Main Menu -->
       <div id="main-menu" class="screen active">
-        <h1>AXIS RUSH</h1>
-        <button id="btn-single" class="main-btn">SINGLE RACE</button>
-        <button id="btn-campaign" class="main-btn">CAMPAIGN MODE</button>
-        <button id="btn-multiplayer" class="main-btn" style="color:#0f0; border-color:#0f0;">MULTIPLAYER</button>
-        <button id="btn-fullscreen" class="main-btn" style="display:none; color:#ff0; border-color:#ff0;">GO FULLSCREEN</button>
-        <button id="btn-time-trial" class="main-btn">TIME TRIAL</button>
-        <button id="btn-gallery" class="main-btn">IMAGE GALLERY</button>
-        <button id="btn-settings" class="main-btn">SETTINGS</button>
-        <button id="btn-how" class="main-btn">HOW TO PLAY</button>
+        <div class="menu-stripe"></div>
+        <div class="main-menu-content">
+          <div class="menu-left-panel">
+            <h1>AXIS RUSH</h1>
+            <div class="button-group-vertical" style="align-items: flex-start;">
+              <button id="btn-single" class="main-btn">SINGLE RACE</button>
+              <button id="btn-campaign" class="main-btn">CAMPAIGN MODE</button>
+              <button id="btn-multiplayer" class="main-btn" style="color:#0f0; border-color:#0f0;">MULTIPLAYER</button>
+              <button id="btn-fullscreen" class="main-btn" style="display:none; color:#ff0; border-color:#ff0;">GO FULLSCREEN</button>
+              <button id="btn-time-trial" class="main-btn">TIME TRIAL</button>
+              <button id="btn-gallery" class="main-btn">IMAGE GALLERY</button>
+              <button id="btn-settings" class="main-btn">SETTINGS</button>
+              <button id="btn-how" class="main-btn">HOW TO PLAY</button>
+            </div>
+          </div>
+          <div class="menu-right-panel">
+            <div class="menu-story-box">
+              <h2 style="text-align: left; font-size: 2rem;">THE AXIS PROTOCOL</h2>
+              <p class="lore-text">
+                "The cylindrical conduits are more than tracks. They are the arteries of humanity. 
+                By racing at sub-light speeds, your kinetic friction primes the interstellar energy grid. 
+                <br><br>
+                In the year 2026, the colonies depend on the kinetic yield of the Rush. 
+                No race, no power. No victory, no future."
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Multiplayer Menu -->

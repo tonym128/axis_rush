@@ -47,7 +47,7 @@ class Game {
     sunLight.position.set(100, 100, 50); 
     sunLight.layers.enable(1);
     this.scene.add(sunLight);
-    this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 1; this.carouselIndex = 0;
+    this.state = 'MENU'; this.gameMode = 'SINGLE'; this.playerPilotId = 0; this.vehicleType = 0; this.mapType = 0; this.difficulty = 0; this.carouselIndex = 0;
     this.campaignTrackIndex = 0; this.campaignScores = {};
     // Per-pilot data: { pilotId: { campaign: { inProgress, trackIndex, scores, vehicleId, difficulty }, upgrades: { vehicleType: { speed, handling, armor } } } }
     this.pilotData = {};
@@ -263,7 +263,7 @@ class Game {
     if (id === 'car-select') this.updateCarPreview(this.vehicleType);
     if (id === 'track-select') this.renderMapList();
     if (id === 'difficulty-select') {
-      if (this.difficulty === undefined) this.difficulty = 1;
+      if (this.difficulty === undefined) this.difficulty = 0;
       const diffBtns = document.querySelectorAll('#diff-select-list button');
       diffBtns.forEach(btn => {
         btn.classList.toggle('selected', parseInt(btn.dataset.val) === this.difficulty);
@@ -518,14 +518,14 @@ class Game {
       });
     }
 
-    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('difficulty-select'); });
+    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.mapType = 0; this.difficulty = 0; this.showScreen('difficulty-select'); });
     document.getElementById('btn-campaign').addEventListener('click', () => { 
-      this.gameMode = 'CAMPAIGN'; this.showScreen('difficulty-select'); 
+      this.gameMode = 'CAMPAIGN'; this.difficulty = 0; this.showScreen('difficulty-select'); 
     });
     document.getElementById('btn-multiplayer').addEventListener('click', () => { 
       this.gameMode = 'MULTIPLAYER'; this.showScreen('char-select'); this.renderCharList(); 
     });
-    document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('difficulty-select'); });
+    document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.mapType = 0; this.difficulty = 0; this.showScreen('difficulty-select'); });
 
     // Multiplayer Menu Buttons
     document.getElementById('btn-mp-back').addEventListener('click', () => { 
