@@ -113,6 +113,8 @@ export class Track {
   addStartMarker() {
     const point = this.curve.getPointAt(0);
     const frame = this.getFrameAt(0);
+    
+    // Minimap marker (Layer 1)
     const geoMap = new THREE.BoxGeometry(this.radius * 3, 5, 10);
     const matMap = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const meshMap = new THREE.Mesh(geoMap, matMap);
@@ -122,13 +124,23 @@ export class Track {
     this.container.add(meshMap);
     this.markers.push(meshMap);
 
-    const geoGame = new THREE.CylinderGeometry(this.radius + 1.2, this.radius + 1.2, 10, 32, 1, true);
-    const matGame = textureManager.getBasicMaterial("checkered", { transparent: true, opacity: 0.8, side: THREE.DoubleSide });
-    const meshGame = new THREE.Mesh(geoGame, matGame);
-    meshGame.position.copy(point);
-    meshGame.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), frame.tangent);
-    this.container.add(meshGame);
-    this.markers.push(meshGame);
+    // Outer Start/Finish Ring
+    const geoOuter = new THREE.CylinderGeometry(this.radius + 1.2, this.radius + 1.2, 10, 32, 1, true);
+    const matOuter = textureManager.getBasicMaterial("checkered", { transparent: true, opacity: 0.8, side: THREE.BackSide });
+    const meshOuter = new THREE.Mesh(geoOuter, matOuter);
+    meshOuter.position.copy(point);
+    meshOuter.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), frame.tangent);
+    this.container.add(meshOuter);
+    this.markers.push(meshOuter);
+
+    // Inner Start/Finish Ring
+    const geoInner = new THREE.CylinderGeometry(this.radius - 1.2, this.radius - 1.2, 10, 32, 1, true);
+    const matInner = textureManager.getBasicMaterial("checkered", { transparent: true, opacity: 0.8, side: THREE.FrontSide });
+    const meshInner = new THREE.Mesh(geoInner, matInner);
+    meshInner.position.copy(point);
+    meshInner.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), frame.tangent);
+    this.container.add(meshInner);
+    this.markers.push(meshInner);
   }
 
   generateItems() {
