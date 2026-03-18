@@ -251,14 +251,25 @@ class Game {
     if (index === -1) index = 0;
     this.setFocus(focusable[index]);
   }
-  
   showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const screen = document.getElementById(id);
+    if (!screen) return;
     screen.classList.add('active');
+    
     if (id !== 'track-select') this.clearPreview();
     if (id !== 'car-select') this.clearCarPreview();
+    
     if (id === 'car-select') this.updateCarPreview(this.vehicleType);
+    if (id === 'track-select') this.renderMapList();
+    if (id === 'difficulty-select') {
+      if (this.difficulty === undefined) this.difficulty = 1;
+      const diffBtns = document.querySelectorAll('#diff-select-list button');
+      diffBtns.forEach(btn => {
+        btn.classList.toggle('selected', parseInt(btn.dataset.val) === this.difficulty);
+      });
+      this.renderDiffList();
+    }
 
     // Default focus to first button or selected button
     const firstBtn = screen.querySelector('button.selected') || screen.querySelector('button');
@@ -507,14 +518,14 @@ class Game {
       });
     }
 
-    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('char-select'); this.renderCharList(); });
+    document.getElementById('btn-single').addEventListener('click', () => { this.gameMode = 'SINGLE'; this.showScreen('difficulty-select'); });
     document.getElementById('btn-campaign').addEventListener('click', () => { 
-      this.gameMode = 'CAMPAIGN'; this.showScreen('char-select'); this.renderCharList(); 
+      this.gameMode = 'CAMPAIGN'; this.showScreen('difficulty-select'); 
     });
     document.getElementById('btn-multiplayer').addEventListener('click', () => { 
       this.gameMode = 'MULTIPLAYER'; this.showScreen('char-select'); this.renderCharList(); 
     });
-    document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('char-select'); this.renderCharList(); });
+    document.getElementById('btn-time-trial').addEventListener('click', () => { this.gameMode = 'TIME_TRIAL'; this.showScreen('difficulty-select'); });
 
     // Multiplayer Menu Buttons
     document.getElementById('btn-mp-back').addEventListener('click', () => { 
@@ -673,23 +684,43 @@ class Game {
       this.carouselIndex = (this.carouselIndex + 1) % PILOTS.length;
       this.renderCharList();
     });
-    document.getElementById('btn-char-back').addEventListener('click', () => { this.showMenu(); });
+    document.getElementById('btn-char-back').addEventListener('click', () => { 
+      if (this.gameMode === 'MULTIPLAYER') this.showMenu();
+      else this.showScreen('difficulty-select'); 
+    });
     const carBtns = document.querySelectorAll('#vehicle-select button');
     carBtns.forEach(btn => { btn.addEventListener('click', () => { carBtns.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.vehicleType = parseInt(btn.dataset.val); this.updateCarPreview(this.vehicleType); }); });
-    document.getElementById('btn-car-next').addEventListener('click', () => { 
-      if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') { 
-        this.showScreen('track-select'); this.renderMapList(); 
-      } else if (this.gameMode === 'CAMPAIGN') { 
-        this.startCampaign(); 
+    document.getElementById('btn-car-next').addEventListener('click', () => {
+      if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') {
+        this.showScreen('track-select');
+      } else if (this.gameMode === 'CAMPAIGN') {
+        this.startCampaign();
       } else if (this.gameMode === 'MULTIPLAYER') {
         this.showScreen('multiplayer-menu');
       }
     });
     document.getElementById('btn-car-back').addEventListener('click', () => { this.showScreen('char-select'); this.renderCharList(); });
-    document.getElementById('btn-track-start').addEventListener('click', () => { this.startRace(); });
+    
+    document.getElementById('btn-track-start').addEventListener('click', () => {
+      this.startRace();
+    });
     document.getElementById('btn-track-back').addEventListener('click', () => { this.showScreen('car-select'); });
-    const diffBtns = document.querySelectorAll('#diff-select button');
-    diffBtns.forEach(btn => { btn.addEventListener('click', () => { diffBtns.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.difficulty = parseInt(btn.dataset.val); }); });
+
+    document.getElementById('btn-diff-next').addEventListener('click', () => { 
+      this.showScreen('char-select'); this.renderCharList(); 
+    });
+    document.getElementById('btn-diff-back').addEventListener('click', () => { this.showMenu(); });
+
+    const diffBtns = document.querySelectorAll('#diff-select-list button');
+    diffBtns.forEach(btn => { 
+      btn.addEventListener('click', () => { 
+        diffBtns.forEach(b => b.classList.remove('selected')); 
+        btn.classList.add('selected'); 
+        this.difficulty = parseInt(btn.dataset.val); 
+        this.renderDiffList(); 
+      }); 
+    });
+
     document.getElementById('restart-btn').addEventListener('click', () => { if (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') this.showMenu(); else this.showLeagueStandings(); });
     document.getElementById('btn-league-next').addEventListener('click', () => { 
       if (this.campaignTrackIndex < MAPS.length) this.startRace(); 
@@ -844,8 +875,49 @@ class Game {
     this.onResize();
   }
 
-  renderMapList() {
-    const list = document.getElementById('map-select'); list.innerHTML = '';
+  renderDiffList() {
+    const nameEl = document.getElementById('diff-name-display');
+    const descEl = document.getElementById('diff-desc-display');
+    const settings = DIFFICULTY_SETTINGS[this.difficulty];
+    
+    nameEl.innerText = settings.name;
+    
+    const descriptions = {
+      0: "Optimized for learners. Slower velocities, reduced collision damage, and enhanced energy regeneration. Perfect for mastering the cylinder's gravity.",
+      1: "The standard competitive specification. Full speed engagement and balanced damage protocols. The true Axis Rush experience.",
+      2: "UNRESTRICTED CORE. Extreme speeds, lethal damage thresholds, and throttled energy recovery. Only for the system's most elite pilots."
+    };
+    
+    descEl.innerText = descriptions[this.difficulty] || "";
+
+    // Apply locking logic to difficulty selection buttons (Global progress)
+    let globalCompleted = [];
+    Object.values(this.pilotData).forEach(pd => {
+      if (pd.completedDifficulties) {
+        pd.completedDifficulties.forEach(d => { if (!globalCompleted.includes(d)) globalCompleted.push(d); });
+      }
+    });
+
+    const diffBtns = document.querySelectorAll('#diff-select-list button');
+    
+    diffBtns.forEach(btn => {
+      const val = parseInt(btn.dataset.val);
+      if (val === 0) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerText = "NOVICE";
+      } else {
+        const prevCompleted = globalCompleted.includes(val - 1);
+        btn.disabled = !prevCompleted;
+        btn.style.opacity = prevCompleted ? '1' : '0.4';
+        btn.innerText = prevCompleted ? (val === 1 ? "PRO" : "ELITE") : "LOCKED";
+      }
+    });
+  }
+
+  renderMapList(targetId = 'map-select') {
+    const list = document.getElementById(targetId); if (!list) return;
+    list.innerHTML = '';
     
     // Determine unlocked tracks based on campaign progress across all pilots
     let maxUnlockedIndex = 0;
@@ -868,34 +940,22 @@ class Game {
         btn.style.cursor = 'not-allowed';
       } else {
         btn.innerText = `${m.name}${suffix}`;
-        if (idx === this.mapType) { btn.classList.add('selected'); this.updatePreview(idx); }
+        if (idx === this.mapType) { 
+          btn.classList.add('selected'); 
+          this.updatePreview(idx);
+          document.getElementById('map-name-display').innerText = m.name;
+          document.getElementById('map-desc-display').innerText = m.desc;
+        }
         btn.addEventListener('click', () => { 
-          document.querySelectorAll('#map-select button').forEach(b => b.classList.remove('selected')); 
+          document.querySelectorAll(`#${targetId} button`).forEach(b => b.classList.remove('selected')); 
           btn.classList.add('selected'); 
           this.mapType = idx; 
           this.updatePreview(idx); 
+          document.getElementById('map-name-display').innerText = m.name;
+          document.getElementById('map-desc-display').innerText = m.desc;
         });
       }
       list.appendChild(btn);
-    });
-
-    // Update difficulty buttons based on current pilot progress
-    const pilotData = this.getPilotData(this.playerPilotId);
-    const completed = pilotData.completedDifficulties || [];
-    const diffBtns = document.querySelectorAll('#diff-select button');
-    
-    diffBtns.forEach(btn => {
-      const val = parseInt(btn.dataset.val);
-      if (val === 0) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.innerText = "Novice";
-      } else {
-        const prevCompleted = completed.includes(val - 1);
-        btn.disabled = !prevCompleted;
-        btn.style.opacity = prevCompleted ? '1' : '0.4';
-        btn.innerText = prevCompleted ? (val === 1 ? "Pro" : "Elite") : "LOCKED";
-      }
     });
 
     this.onResize();
@@ -2117,31 +2177,29 @@ class Game {
     if ((isMapSelect || isRacing || isCarSelect) && this.state !== 'PAUSED') {
       let x, y, mapSize;
       
-      if (isCarSelect || isMapSelect) {
-        const placeholderId = isCarSelect ? 'car-preview-placeholder' : 'map-preview-placeholder';
-        const placeholder = document.getElementById(placeholderId);
+      if (isCarSelect) {
+        const placeholder = document.getElementById('car-preview-placeholder');
         if (placeholder) {
           const rect = placeholder.getBoundingClientRect();
-          // Convert DOM coordinates (top-left) to WebGL coordinates (bottom-left)
-          // We need to account for the fact that the renderer size might be different from window size if scaled,
-          // but here they should match.
           mapSize = Math.min(rect.width, rect.height);
-          if (isMapSelect) mapSize = rect.height; // Map select usually wants to fill height
-          
           x = rect.left + (rect.width - mapSize) / 2;
           y = window.innerHeight - rect.bottom + (rect.height - mapSize) / 2;
-        } else {
-          // Fallback
-          mapSize = Math.min(window.innerWidth, window.innerHeight) * (isCarSelect ? 0.6 : 0.4);
-          x = window.innerWidth / 2 - mapSize / 2;
-          if (isMapSelect) x = window.innerWidth - mapSize - 50;
-          y = window.innerHeight / 2 - mapSize / 2;
         }
-      } else {
-        // Racing minimap
+      } else if (isMapSelect) {
+        const placeholder = document.getElementById('map-preview-placeholder');
+        if (placeholder) {
+          const rect = placeholder.getBoundingClientRect();
+          mapSize = rect.height;
+          x = rect.left + (rect.width - mapSize) / 2;
+          y = window.innerHeight - rect.bottom + (rect.height - mapSize) / 2;
+        }
+      }
+      
+      if (x === undefined) {
+        // Fallback for Racing minimap or if placeholder missing
         mapSize = Math.min(window.innerWidth, window.innerHeight) * 0.25;
         x = 20;
-        y = 20 + 220; // margin + statsHeight
+        y = 20 + 220; 
       }
       
       this.renderer.setViewport(x, y, mapSize, mapSize); this.renderer.setScissor(x, y, mapSize, mapSize); this.renderer.setScissorTest(true); 

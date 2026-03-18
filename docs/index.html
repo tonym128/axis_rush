@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DDNDUGVn.js"></script>
+  <script type="module" crossorigin src="./assets/index-BT_g3Iwh.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-CpGB189c.css">
 </head>
 <body>
@@ -307,7 +307,7 @@
         </div>
       </div>
 
-      <!-- Track Select (Single Race Only) -->
+      <!-- Track Select -->
       <div id="track-select" class="screen">
         <h2>SELECT TRACK</h2>
         <div id="map-selection-flow">
@@ -318,19 +318,39 @@
             <div id="map-preview-placeholder"></div>
           </div>
           <div class="selection-right">
-            <div class="menu-section">
-              <h3>DIFFICULTY</h3>
-              <div class="button-group" id="diff-select">
-                <button class="selected" data-val="0">Novice</button>
-                <button data-val="1">Pro</button>
-                <button data-val="2">Elite</button>
-              </div>
+            <div id="map-info" class="info-box">
+              <h3 id="map-name-display" style="color:#0ff; margin-bottom:10px;">MAP NAME</h3>
+              <p id="map-desc-display" style="text-align:left; line-height:1.4;"></p>
             </div>
           </div>
         </div>
         <div class="button-group">
           <button id="btn-track-back">BACK</button>
           <button id="btn-track-start" class="selected">START ENGINE</button>
+        </div>
+      </div>
+
+      <!-- Difficulty Select -->
+      <div id="difficulty-select" class="screen">
+        <h2>SELECT DIFFICULTY</h2>
+        <div id="diff-selection-flow" style="display:flex; flex-direction:row; gap:30px; width:90%; max-width:1200px; flex-grow:1; align-items:center;">
+          <div class="selection-left">
+            <div class="button-group-vertical" id="diff-select-list">
+              <button class="selected" data-val="0">NOVICE</button>
+              <button data-val="1">PRO</button>
+              <button data-val="2">ELITE</button>
+            </div>
+          </div>
+          <div class="selection-right" style="flex:1;">
+            <div id="diff-info" class="info-box" style="height:300px; justify-content:center;">
+              <h3 id="diff-name-display" style="color:#0ff; font-size:2rem; margin-bottom:20px;">PRO</h3>
+              <p id="diff-desc-display" style="font-size:1.2rem; line-height:1.6; text-align:center;"></p>
+            </div>
+          </div>
+        </div>
+        <div class="button-group">
+          <button id="btn-diff-back">BACK</button>
+          <button id="btn-diff-next" class="selected">NEXT: CHARACTER</button>
         </div>
       </div>
 
