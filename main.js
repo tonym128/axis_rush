@@ -1538,12 +1538,29 @@ class Game {
       if (r.rank !== oldRank) r.updateRankLabel(); 
     });
     
+    const now = performance.now();
+    if (!this._lastGlobalComms) this._lastGlobalComms = 0;
+
     if (this.player && oldPlayerRank > 0 && this.player.rank > oldPlayerRank) {
       // Player was overtaken
-      const overtaker = allRacers[this.player.rank - 2]; // The one now ahead of player
+      const overtaker = allRacers[this.player.rank - 2]; 
       if (overtaker && !overtaker.isPlayer) {
         this.showComms(overtaker.pilot, 'onOvertake', this.player.pilot);
+        this._lastGlobalComms = now;
       }
+    } else if (now - this._lastGlobalComms > 8000) { 
+      // Atmospheric AI-to-AI banter (lower priority)
+      allRacers.forEach((r, idx) => {
+        const oldRank = r._prevRank || r.rank;
+        if (!r.isPlayer && r.rank < oldRank) { // Someone moved up
+          const overtaken = allRacers[r.rank]; // The one now behind
+          if (overtaken && !overtaken.isPlayer && Math.random() < 0.15) {
+             this.showComms(r.pilot, 'onOvertake', overtaken.pilot);
+             this._lastGlobalComms = now;
+          }
+        }
+        r._prevRank = r.rank;
+      });
     }
   }
 

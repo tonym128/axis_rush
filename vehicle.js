@@ -259,8 +259,17 @@ export class Vehicle {
           other.shakeAmount = 1.0;
         }
       }
-    } else if (attacker && attacker.isPlayer) {
-      if (window.gameInstance) window.gameInstance.showComms(this.pilot, 'onHit', attacker.pilot);
+    } else if (attacker && window.gameInstance) {
+      const now = performance.now();
+      const lastGlobal = window.gameInstance._lastGlobalComms || 0;
+      const isPlayerInvolved = this.isPlayer || attacker.isPlayer;
+      const cooldown = isPlayerInvolved ? 3000 : 10000;
+      const chance = isPlayerInvolved ? 1.0 : 0.1;
+
+      if (now - lastGlobal > cooldown && Math.random() < chance) {
+        window.gameInstance.showComms(this.pilot, 'onHit', attacker.pilot);
+        window.gameInstance._lastGlobalComms = now;
+      }
     }
     if (attacker && attacker !== this) { const id = attacker.pilot.id; this.rivalries[id] = (this.rivalries[id] || 0) + 1; }
   }
@@ -506,15 +515,18 @@ export class Vehicle {
           this.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, other, otherRacers); 
           other.takeDamage(GAME_CONFIG.DAMAGE_COLLISION_VEHICLE, this, otherRacers);
           
-          // Trigger collision comms if player involved
-          if ((this.isPlayer || other.isPlayer) && window.gameInstance) {
+          // Trigger collision comms
+          if (window.gameInstance) {
             const now = performance.now();
-            if (!this._lastCollideComms || now - this._lastCollideComms > 5000) {
-              const sender = this.isPlayer ? other : this;
-              const receiver = this.isPlayer ? this : other;
+            const lastGlobal = window.gameInstance._lastGlobalComms || 0;
+            const cooldown = (this.isPlayer || other.isPlayer) ? 5000 : 12000;
+            const chance = (this.isPlayer || other.isPlayer) ? 1.0 : 0.05;
+
+            if (now - lastGlobal > cooldown && Math.random() < chance) {
+              const sender = this.isPlayer ? other : (other.isPlayer ? this : (Math.random() > 0.5 ? this : other));
+              const receiver = sender === this ? other : this;
               window.gameInstance.showComms(sender.pilot, 'onCollide', receiver.pilot);
-              this._lastCollideComms = now;
-              other._lastCollideComms = now;
+              window.gameInstance._lastGlobalComms = now;
             }
           }
         }
