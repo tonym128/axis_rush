@@ -59,7 +59,7 @@ h1 {
   font-size: 4rem;
   color: #0ff;
   text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
-  margin-bottom: 0.5rem;
+  margin-bottom: 2rem;
   font-style: italic;
   letter-spacing: 5px;
   text-align: center;
@@ -454,6 +454,10 @@ button.selected {
   border-color: #0ff;
 }
 
+#main-menu {
+  flex-direction: column;
+}
+
 .main-menu-content {
   display: flex;
   width: 90%;
@@ -461,6 +465,7 @@ button.selected {
   align-items: center;
   justify-content: space-between;
   z-index: 10;
+  margin-top: 20px;
 }
 
 .menu-left-panel {
@@ -499,10 +504,15 @@ button.selected {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.15) 30%, transparent 30.5%);
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.15) 40%, transparent 40.5%);
   z-index: 1;
   pointer-events: none;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#main-menu h1 {
+  width: 100%;
+  margin-bottom: 2rem;
 }
 
 #main-menu .main-btn {
@@ -516,14 +526,14 @@ button.selected {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-#main-menu .main-btn:nth-child(1) { margin-left: 20px; }
-#main-menu .main-btn:nth-child(2) { margin-left: 45px; }
-#main-menu .main-btn:nth-child(3) { margin-left: 70px; }
-#main-menu .main-btn:nth-child(4) { margin-left: 95px; }
-#main-menu .main-btn:nth-child(5) { margin-left: 120px; }
-#main-menu .main-btn:nth-child(6) { margin-left: 145px; }
-#main-menu .main-btn:nth-child(7) { margin-left: 170px; }
-#main-menu .main-btn:nth-child(8) { margin-left: 195px; }
+#main-menu .main-btn:nth-child(1) { margin-left: 195px; }
+#main-menu .main-btn:nth-child(2) { margin-left: 170px; }
+#main-menu .main-btn:nth-child(3) { margin-left: 145px; }
+#main-menu .main-btn:nth-child(4) { margin-left: 120px; }
+#main-menu .main-btn:nth-child(5) { margin-left: 95px; }
+#main-menu .main-btn:nth-child(6) { margin-left: 70px; }
+#main-menu .main-btn:nth-child(7) { margin-left: 45px; }
+#main-menu .main-btn:nth-child(8) { margin-left: 20px; }
 
 #main-menu .main-btn:hover {
   transform: translateX(15px);
