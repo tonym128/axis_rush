@@ -1312,12 +1312,12 @@ class Game {
       const id = parseInt(idStr), row = document.createElement('div');
       row.className = 'standings-row'; if (id === this.playerPilotId) row.classList.add('player');
       row.innerHTML = `
-        <div style="display:flex; align-items:center; gap:15px;">
-          <span style="color:#0ff; font-weight:bold; font-size:1.5rem;">${idx+1}</span>
+        <div style="display:flex; align-items:center; gap:15px; flex:1;">
+          <span style="color:#0ff; font-weight:bold; font-size:1.5rem; width:30px;">${idx+1}</span>
           <img src="${PILOTS[id].portrait}" style="width:40px; height:40px; border:1px solid #0ff;">
           <span>${PILOTS[id].name}</span>
         </div>
-        <span style="font-weight:bold; letter-spacing:1px;">${this.campaignScores[id]} PTS</span>
+        <span style="font-weight:bold; letter-spacing:1px; width:120px; text-align:right;">${this.campaignScores[id]} PTS</span>
       `;
       list.appendChild(row);
     });
@@ -1542,7 +1542,7 @@ class Game {
         }
       }
 
-      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${infoText}</span>`;
+      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span style="width:80px; text-align:right;">${infoText}</span>`;
       lb.appendChild(row);
     });
 

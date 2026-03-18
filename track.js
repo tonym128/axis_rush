@@ -138,9 +138,9 @@ export class Track {
       const frameIdx = Math.floor(t * this.segments), tangent = this.frames.tangents[frameIdx], normal = this.frames.normals[frameIdx];
       const angle = Math.random() * Math.PI * 2, isInside = Math.random() > 0.5, rand = Math.random();
       let type = 'boost'; 
-      if (rand > 0.9) type = 'recharge';
-      else if (rand > 0.75) type = 'weapon'; 
-      else if (rand > 0.5) type = 'obstacle';
+      if (rand > 0.85) type = 'recharge';
+      else if (rand > 0.65) type = 'weapon'; 
+      else if (rand > 0.45) type = 'obstacle';
 
       let itemR = isInside ? this.radius - 1 : this.radius + 1;
       if (type === 'weapon') itemR = isInside ? this.radius - 5 : this.radius + 5;
@@ -154,16 +154,34 @@ export class Track {
       let geo, mat;
       if (type === 'boost') {
         geo = new THREE.BoxGeometry(4, 0.5, 16);
-        mat = textureManager.getMaterial("blue electric neon", { emissive: new THREE.Color(0x0088ff), emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
+        mat = textureManager.getMaterial("blue electric neon", { 
+          emissive: new THREE.Color(0x0088ff), 
+          emissiveIntensity: 2.0, 
+          transparent: true, 
+          opacity: 0.9 
+        });
       } else if (type === 'weapon') {
         geo = new THREE.IcosahedronGeometry(2, 0);
-        mat = textureManager.getMaterial("red shiny crystal glowing", { color: 0xff0000 });
+        mat = textureManager.getMaterial("red shiny crystal glowing", { 
+          color: 0xff0000,
+          emissive: new THREE.Color(0xff0000),
+          emissiveIntensity: 1.5
+        });
       } else if (type === 'recharge') {
         geo = new THREE.BoxGeometry(6, 0.2, 20);
-        mat = textureManager.getMaterial("magenta neon glowing", { emissive: new THREE.Color(0xff00ff), emissiveIntensity: 1.0, transparent: true, opacity: 0.6 });
+        mat = textureManager.getMaterial("magenta neon glowing", { 
+          emissive: new THREE.Color(0xff00ff), 
+          emissiveIntensity: 2.5, 
+          transparent: true, 
+          opacity: 0.7 
+        });
       } else {
         geo = new THREE.BoxGeometry(4, 6, 4);
-        mat = textureManager.getMaterial("brown crate rough", { flatShading: true });
+        mat = textureManager.getMaterial("black metal rough dark", { 
+          color: 0x222222,
+          roughness: 0.8,
+          metalness: 0.2
+        });
       }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.copy(pos);
