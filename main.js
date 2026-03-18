@@ -100,12 +100,16 @@ class Game {
       this.deferredPrompt = e;
       const installBtn = document.getElementById('btn-install-pwa');
       if (installBtn) installBtn.style.display = 'block';
+      const installIcon = document.getElementById('icon-install');
+      if (installIcon) installIcon.style.display = 'flex';
     });
 
     window.addEventListener('appinstalled', () => {
       this.deferredPrompt = null;
       const installBtn = document.getElementById('btn-install-pwa');
       if (installBtn) installBtn.style.display = 'none';
+      const installIcon = document.getElementById('icon-install');
+      if (installIcon) installIcon.style.display = 'none';
     });
 
     this.setupUI(); this.setupInputs(); this.setupTouchControls();
@@ -116,7 +120,18 @@ class Game {
 
     // Initialize attract screen
     this.state = ''; // reset state so showMenu triggers full init
+    this.updateMusicIcon();
+    this.updateSoundIcon();
     this.showMenu();
+
+    document.addEventListener('fullscreenchange', () => {
+      const fsIcon = document.getElementById('icon-fullscreen');
+      if (document.fullscreenElement) {
+        fsIcon.style.borderColor = '#ff0'; // Highlight when in FS
+      } else {
+        fsIcon.style.borderColor = '#0ff';
+      }
+    });
     
     this.loop();
   }
@@ -226,6 +241,40 @@ class Game {
     audioEngine.masterGain.gain.setTargetAtTime(this.settings.audio.master, audioEngine.ctx.currentTime, 0.05);
     audioEngine.musicGain.gain.setTargetAtTime(this.settings.audio.music, audioEngine.ctx.currentTime, 0.05);
     audioEngine.sfxGain.gain.setTargetAtTime(this.settings.audio.sfx, audioEngine.ctx.currentTime, 0.05);
+    this.updateMusicIcon();
+    this.updateSoundIcon();
+  }
+
+  updateMusicIcon() {
+    const musicOn = document.getElementById('music-on-icon');
+    const musicOff = document.getElementById('music-off-icon');
+    if (!musicOn || !musicOff) return;
+    
+    if (this.settings.audio.music > 0) {
+      musicOn.style.display = 'block';
+      musicOff.style.display = 'none';
+      document.getElementById('icon-music').style.borderColor = '#0ff';
+    } else {
+      musicOn.style.display = 'none';
+      musicOff.style.display = 'block';
+      document.getElementById('icon-music').style.borderColor = '#555';
+    }
+  }
+
+  updateSoundIcon() {
+    const soundOn = document.getElementById('sound-on-icon');
+    const soundOff = document.getElementById('sound-off-icon');
+    if (!soundOn || !soundOff) return;
+    
+    if (this.settings.audio.sfx > 0) {
+      soundOn.style.display = 'block';
+      soundOff.style.display = 'none';
+      document.getElementById('icon-sound').style.borderColor = '#0ff';
+    } else {
+      soundOn.style.display = 'none';
+      soundOff.style.display = 'block';
+      document.getElementById('icon-sound').style.borderColor = '#555';
+    }
   }
 
   setFocus(el) {
@@ -261,6 +310,9 @@ class Game {
     if (!screen) return;
     screen.classList.add('active');
     
+    this.updateMusicIcon();
+    this.updateSoundIcon();
+
     if (id !== 'track-select') this.clearPreview();
     if (id !== 'car-select') this.clearCarPreview();
     
@@ -672,6 +724,55 @@ class Game {
     document.getElementById('btn-settings').addEventListener('click', () => { this.showScreen('settings-menu'); this.renderSettings(); });
     document.getElementById('btn-settings-back').addEventListener('click', () => { this.showMenu(); });
     
+    // Top Left Icons
+    document.getElementById('icon-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log(e));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    document.getElementById('icon-music').addEventListener('click', () => {
+      const isMusicOn = this.settings.audio.music > 0;
+      if (isMusicOn) {
+        this._oldMusicVol = this.settings.audio.music;
+        this.settings.audio.music = 0;
+      } else {
+        this.settings.audio.music = this._oldMusicVol || 0.5;
+      }
+      this.applySettings();
+      this.saveData();
+      this.updateMusicIcon();
+    });
+
+    document.getElementById('icon-sound').addEventListener('click', () => {
+      const isSoundOn = this.settings.audio.sfx > 0;
+      if (isSoundOn) {
+        this._oldSfxVol = this.settings.audio.sfx;
+        this.settings.audio.sfx = 0;
+      } else {
+        this.settings.audio.sfx = this._oldSfxVol || 0.8;
+      }
+      this.applySettings();
+      this.saveData();
+      this.updateSoundIcon();
+    });
+
+    const installIcon = document.getElementById('icon-install');
+    if (installIcon) {
+      installIcon.addEventListener('click', async () => {
+        if (this.deferredPrompt) {
+          this.deferredPrompt.prompt();
+          const { outcome } = await this.deferredPrompt.userChoice;
+          this.deferredPrompt = null;
+          installIcon.style.display = 'none';
+          const installBtn = document.getElementById('btn-install-pwa');
+          if (installBtn) installBtn.style.display = 'none';
+        }
+      });
+    }
+
     const installBtn = document.getElementById('btn-install-pwa');
     if (installBtn) {
       installBtn.addEventListener('click', async () => {
@@ -865,6 +966,7 @@ class Game {
       this.showScreen('hud');
       audioEngine.ctx.resume();
     }
+    this.onResize();
   }
 
   renderCharList() {
@@ -1201,6 +1303,11 @@ class Game {
     this.camera.updateProjectionMatrix(); 
     this.renderer.setSize(w, h); 
     this.composer.setSize(w, h);
+
+    const icons = document.getElementById('top-left-icons');
+    if (icons) {
+      icons.style.display = (this.state === 'RACING') ? 'none' : 'flex';
+    }
 
     // UI Scaling for small windows
     const baseW = 1280, baseH = 720;

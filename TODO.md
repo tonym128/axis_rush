@@ -1,6 +1,6 @@
 - Player select screen on mobile is cut off, the player selection boxes are in a window that doesn't go the whole way down
 - Story boxes run of the screen on mobile
-- Some dialog boxes run of the bottom of the screen
+- Some dialog boxes run of the bottom of the on mobile
 
 DONE
 - when reloading the page I get
