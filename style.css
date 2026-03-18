@@ -547,30 +547,32 @@ button.selected {
 }
 
 #main-menu .main-btn {
-  width: 380px;
+  width: 22vw;
+  min-width: 280px;
   text-align: left;
-  padding: 15px 30px;
-  margin-top: 1rem;
+  padding: 1.5vh 2vw;
+  margin-top: 1.2vh;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   background: rgba(255, 0, 255, 0.05);
-  border-left: 4px solid #f0f;
+  border-left: 0.3vw solid #f0f;
+  font-size: 1.2rem;
 }
 
-#main-menu .main-btn:nth-child(1) { margin-left: 280px; }
-#main-menu .main-btn:nth-child(2) { margin-left: 240px; }
-#main-menu .main-btn:nth-child(3) { margin-left: 200px; }
-#main-menu .main-btn:nth-child(4) { margin-left: 160px; }
-#main-menu .main-btn:nth-child(5) { margin-left: 120px; }
-#main-menu .main-btn:nth-child(6) { margin-left: 80px; }
-#main-menu .main-btn:nth-child(7) { margin-left: 40px; }
-#main-menu .main-btn:nth-child(8) { margin-left: 0px; }
+#main-menu .main-btn:nth-child(1) { margin-left: 16vw; }
+#main-menu .main-btn:nth-child(2) { margin-left: 13.7vw; }
+#main-menu .main-btn:nth-child(3) { margin-left: 11.4vw; }
+#main-menu .main-btn:nth-child(4) { margin-left: 9.1vw; }
+#main-menu .main-btn:nth-child(5) { margin-left: 6.8vw; }
+#main-menu .main-btn:nth-child(6) { margin-left: 4.5vw; }
+#main-menu .main-btn:nth-child(7) { margin-left: 2.2vw; }
+#main-menu .main-btn:nth-child(8) { margin-left: 0vw; }
 
 #main-menu .main-btn:hover {
-  padding-left: 45px;
-  transform: translateX(10px);
+  padding-left: 3vw;
+  transform: translateX(1vw);
   background: rgba(255, 0, 255, 0.2);
   color: #fff;
 }
