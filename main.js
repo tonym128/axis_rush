@@ -482,7 +482,7 @@ class Game {
     }
   }
 
-  showConfirm(title, text, onConfirm) {
+  showConfirm(title, text, onConfirm, onCancel, yesLabel = 'PROCEED', noLabel = 'CANCEL') {
     document.getElementById('confirm-title').innerText = title;
     document.getElementById('confirm-text').innerText = text;
     const oldYes = document.getElementById('btn-confirm-yes');
@@ -494,11 +494,28 @@ class Game {
     oldYes.parentNode.replaceChild(newYes, oldYes);
     oldNo.parentNode.replaceChild(newNo, oldNo);
 
-    newYes.addEventListener('click', () => { onConfirm(); });
-    newNo.addEventListener('click', () => { this.showScreen(this._prevScreen || 'main-menu'); });
+    newYes.innerText = yesLabel;
+    newNo.innerText = noLabel || 'CANCEL';
+    newNo.style.display = noLabel === null ? 'none' : 'inline-block';
+
+    newYes.addEventListener('click', () => { 
+      onConfirm(); 
+    });
+    newNo.addEventListener('click', () => { 
+      if (onCancel) onCancel();
+      else this.showScreen(this._prevScreen || 'main-menu'); 
+    });
     
-    this._prevScreen = document.querySelector('.screen.active').id;
+    const active = document.querySelector('.screen.active');
+    this._prevScreen = active ? active.id : 'main-menu';
     this.showScreen('confirm-dialog');
+  }
+
+  showMessage(title, text, onOk) {
+    this.showConfirm(title, text, () => {
+      if (onOk) onOk();
+      else this.showScreen(this._prevScreen || 'main-menu');
+    }, null, 'OK', null);
   }
 
   loadStoryImage(imgId, containerId, src) {

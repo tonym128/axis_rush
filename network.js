@@ -60,7 +60,7 @@ export class NetworkManager {
     this.peer.on('error', (err) => {
       console.error('Peer error:', err);
       if (err.type !== 'peer-unavailable') {
-        alert('Network Error: ' + err.type);
+        this.game.showMessage('NETWORK ERROR', 'Peer error: ' + err.type);
       }
     });
   }
@@ -209,12 +209,13 @@ export class NetworkManager {
         this.handleClientData(data);
       });
       this.hostConnection.on('close', () => {
-        alert('Host disconnected');
-        this.game.showMenu();
+        this.game.showMessage('DISCONNECTED', 'Host disconnected', () => {
+          this.game.showMenu();
+        });
         this.hostConnection = null;
       });
       this.hostConnection.on('error', (err) => {
-        alert('Connection error');
+        this.game.showMessage('CONNECTION ERROR', 'A network error occurred.');
       });
     });
   }
@@ -259,7 +260,7 @@ export class NetworkManager {
     // Check if everyone is ready
     const allReady = Object.values(this.players).every(p => p.ready);
     if (!allReady) {
-      alert('Cannot start race: Not all players are ready!');
+      this.game.showMessage('LOBBY NOT READY', 'Not all players are ready!');
       return;
     }
 
