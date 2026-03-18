@@ -1311,7 +1311,15 @@ class Game {
     sortedIds.forEach((idStr, idx) => {
       const id = parseInt(idStr), row = document.createElement('div');
       row.className = 'standings-row'; if (id === this.playerPilotId) row.classList.add('player');
-      row.innerText = `${idx+1}. ${PILOTS[id].name} - ${this.campaignScores[id]} PTS`; list.appendChild(row);
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:15px;">
+          <span style="color:#0ff; font-weight:bold; font-size:1.5rem;">${idx+1}</span>
+          <img src="${PILOTS[id].portrait}" style="width:40px; height:40px; border:1px solid #0ff;">
+          <span>${PILOTS[id].name}</span>
+        </div>
+        <span style="font-weight:bold; letter-spacing:1px;">${this.campaignScores[id]} PTS</span>
+      `;
+      list.appendChild(row);
     });
     this.onResize();
   }
@@ -1512,61 +1520,59 @@ class Game {
       }
     }
 
-    const lb = document.getElementById('hud-leaderboard'); lb.innerHTML = '';
-    
-    // Header for timetable
-    const header = document.createElement('div');
-    header.className = 'lb-row';
-    header.style.color = '#0ff';
-    header.style.fontSize = '0.7rem';
-    header.innerHTML = `<span>PILOT</span><span>TIME/GAP</span>`;
-    lb.appendChild(header);
+    const lb = document.getElementById('hud-leaderboard'); lb.innerHTML = '<div style="color:#0ff; font-weight:bold; margin-bottom:10px; border-bottom:1px solid rgba(0,255,255,0.3); padding-bottom:5px; font-size:0.8rem; letter-spacing:2px;">POSITIONS</div>';
 
     allRacers.forEach((r, idx) => {
-      const row = document.createElement('div'); row.className = 'lb-row'; 
-      if (r.isPlayer) row.classList.add('player');
-      else if (r.isHuman) row.style.color = '#0f0'; // Green for other human players
-      
+      const row = document.createElement('div'); 
+      row.className = `hud-lb-row ${r.isPlayer ? 'player' : ''}`;
+      if (!r.isPlayer && r.isHuman) row.style.color = '#0f0'; 
+
       let infoText = "";
       if (r.isPlayer) {
-        const myTotalTime = this.player.totalTime || 0;
-        const currentLapTime = performance.now() - this.lapStartTime;
-        infoText = `${((myTotalTime + currentLapTime) / 1000).toFixed(2)}s`;
+        const currentLapTime = performance.now() - this.player._lapStartTime;
+        infoText = `${(currentLapTime / 1000).toFixed(2)}s`;
       } else {
-        // For remote players/AI, use host-synced time if available
         if (r.totalTime !== undefined && r.totalTime > 0) {
-          const myTotalTime = this.player.totalTime || 0;
-          const currentLapTime = performance.now() - this.lapStartTime;
-          const gap = (r.totalTime - (myTotalTime + currentLapTime)) / 1000;
+          const myTime = performance.now() - this.player._lapStartTime;
+          const gap = (r.totalTime - myTime) / 1000;
           infoText = gap > 0 ? `+${gap.toFixed(2)}s` : `${gap.toFixed(2)}s`;
         } else {
-          // Fallback to distance-based gap estimation
           const gap = (r.lapProgress - this.player.lapProgress) * 12000 / Math.max(100, this.player.speed);
           infoText = gap > 0 ? `+${gap.toFixed(1)}s` : `${gap.toFixed(1)}s`;
         }
       }
-      
-      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${infoText}</span>`; 
+
+      row.innerHTML = `<span>${r.rank}. ${r.pilot.name}</span><span>${infoText}</span>`;
       lb.appendChild(row);
     });
-    
-    // Time Trial HUD
+
     if (this.gameMode === 'TIME_TRIAL') {
-      const currentLapTime = ((performance.now() - this.currentLapStartTime) / 1000).toFixed(2);
+      const currentLapTime = ((performance.now() - this.player._lapStartTime) / 1000).toFixed(2);
       const bestTime = this.bestLapTimes[this.mapType] ? (this.bestLapTimes[this.mapType] / 1000).toFixed(2) : '--.--';
       let diffStr = "";
       if (this.ghostTimeDiff !== null) {
         const color = this.ghostTimeDiff > 0 ? "#0f0" : "#f00";
-        const sign = this.ghostTimeDiff > 0 ? "-" : "+"; // if ghost time is 30 and player is 32, diff is -2, so player is +2 behind
-        diffStr = `<span style="color:${color}; font-size: 1.2rem; margin-top: 5px;">GHOST: ${sign}${Math.abs(this.ghostTimeDiff).toFixed(2)}s</span>`;
+        const sign = this.ghostTimeDiff > 0 ? "-" : "+";
+        diffStr = `<div style="color:${color}; font-size: 0.9rem; margin-top: 5px;">GHOST: ${sign}${Math.abs(this.ghostTimeDiff).toFixed(2)}s</div>`;
       }
-      lb.innerHTML = `<div class="lb-row player" style="flex-direction: column; align-items:flex-start;">
-        <span>LAP TIME: ${currentLapTime}s</span>
-        <span style="color:#0ff">BEST LAP: ${bestTime}s</span>
+
+      const ttBox = document.createElement('div');
+      ttBox.className = 'hud-lb-row player';
+      ttBox.style.flexDirection = 'column';
+      ttBox.style.alignItems = 'flex-start';
+      ttBox.style.marginTop = '15px';
+      ttBox.style.paddingTop = '10px';
+      ttBox.style.borderTop = '1px solid rgba(0,255,255,0.3)';
+      ttBox.innerHTML = `
+        <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">TIME TRIAL</div>
+        <span>LAP: ${currentLapTime}s</span>
+        <span style="color:#0ff">BEST: ${bestTime}s</span>
         ${diffStr}
-        </div>`;
+      `;
+      lb.appendChild(ttBox);
     }
     this.onResize();
+
     let raceOver = false;
     if (allRacers.some(r => r.lap > 3)) raceOver = true;
     if (raceOver && this.state !== 'FINISHED') this.finishRace(allRacers);

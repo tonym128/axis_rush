@@ -651,30 +651,56 @@ button.selected {
 .standings-row {
   display: flex;
   justify-content: space-between;
-  width: 400px;
-  padding: 10px;
-  border-bottom: 1px solid #333;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  padding: 1.5vh 2vw;
+  background: rgba(0, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
   font-size: 1.2rem;
+  margin-bottom: 5px;
+  clip-path: polygon(0 0, 98% 0, 100% 20%, 100% 100%, 2% 100%, 0 80%);
+  transition: all 0.3s;
 }
 
 .standings-row.player {
   color: #0ff;
   font-weight: bold;
-  background: rgba(0,255,255,0.1);
+  background: rgba(0, 255, 255, 0.15);
+  border-left: 4px solid #0ff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
 }
 
 /* HUD elements */
 #hud-leaderboard {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  background: rgba(0, 255, 255, 0.05);
-  border-left: 4px solid #0ff;
-  padding: 10px;
-  font-size: 0.9rem;
-  color: #0ff;
-  width: 250px;
+  top: 2vh;
+  left: 2vw;
+  background: linear-gradient(135deg, rgba(0, 20, 20, 0.8) 0%, rgba(0, 5, 5, 0.9) 100%);
+  border-left: 0.4vw solid #0ff;
+  padding: 1.5vh 1.5vw;
+  font-size: 1.1rem;
+  color: #fff;
+  width: 18vw;
+  min-width: 250px;
   pointer-events: none;
+  backdrop-filter: blur(10px);
+  clip-path: polygon(0 0, 90% 0, 100% 10%, 100% 100%, 0 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.hud-lb-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5vh;
+  padding: 0.2vh 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hud-lb-row.player {
+  color: #0ff;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
 }
 
 .lb-row {
