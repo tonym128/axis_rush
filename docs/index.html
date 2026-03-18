@@ -13,8 +13,8 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-Cu5Sjtn9.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-VCTCaKTo.css">
+  <script type="module" crossorigin src="./assets/index-DSgr8nDT.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-dtvnLu5M.css">
 </head>
 <body>
   <div id="portrait-message">
@@ -286,16 +286,18 @@
       <!-- Car Select -->
       <div id="car-select" class="screen">
         <h2>SELECT VEHICLE</h2>
-        <div class="char-selection-layout">
-          <div class="menu-section">
+        <div id="car-selection-flow">
+          <div class="selection-left">
             <div class="button-group-vertical" id="vehicle-select">
               <button class="selected" data-val="0">LIGHT CLASS</button>
               <button data-val="1">BALANCED CLASS</button>
               <button data-val="2">HEAVY CLASS</button>
             </div>
           </div>
-          <div class="char-preview-panel">
-            <div id="car-preview-container"></div>
+          <div class="selection-middle">
+            <div id="car-preview-placeholder"></div>
+          </div>
+          <div class="selection-right">
             <div id="car-info" class="info-box"></div>
           </div>
         </div>

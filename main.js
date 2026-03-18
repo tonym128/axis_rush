@@ -167,6 +167,7 @@ class Game {
     if (!this.pilotData[pilotId]) {
       this.pilotData[pilotId] = {
         campaign: { inProgress: false, trackIndex: 0, scores: {}, vehicleId: 0, difficulty: 1 },
+        completedDifficulties: [], // e.g. [0] if Novice is completed
         upgrades: {
           0: { speed: 0, handling: 0, armor: 0 },
           1: { speed: 0, handling: 0, armor: 0 },
@@ -843,14 +844,58 @@ class Game {
 
   renderMapList() {
     const list = document.getElementById('map-select'); list.innerHTML = '';
+    
+    // Determine unlocked tracks based on campaign progress across all pilots
+    let maxUnlockedIndex = 0;
+    Object.values(this.pilotData).forEach(pd => {
+      if (pd.campaign && pd.campaign.trackIndex > maxUnlockedIndex) {
+        maxUnlockedIndex = pd.campaign.trackIndex;
+      }
+    });
+
     MAPS.forEach((m, idx) => {
+      const isLocked = (this.gameMode === 'SINGLE' || this.gameMode === 'TIME_TRIAL') && idx > maxUnlockedIndex;
       const bestLap = this.bestLapTimes[idx] ? `${(this.bestLapTimes[idx] / 1000).toFixed(2)}s` : "NONE";
       const suffix = this.gameMode === 'TIME_TRIAL' ? ` - BEST: ${bestLap}` : ` (${m.diff})`;
-      const btn = document.createElement('button'); btn.innerText = `${m.name}${suffix}`;
-      if (idx === this.mapType) { btn.classList.add('selected'); this.updatePreview(idx); }
-      btn.addEventListener('click', () => { document.querySelectorAll('#map-select button').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.mapType = idx; this.updatePreview(idx); });
+      
+      const btn = document.createElement('button'); 
+      if (isLocked) {
+        btn.innerText = `LOCKED: ${m.name}`;
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+      } else {
+        btn.innerText = `${m.name}${suffix}`;
+        if (idx === this.mapType) { btn.classList.add('selected'); this.updatePreview(idx); }
+        btn.addEventListener('click', () => { 
+          document.querySelectorAll('#map-select button').forEach(b => b.classList.remove('selected')); 
+          btn.classList.add('selected'); 
+          this.mapType = idx; 
+          this.updatePreview(idx); 
+        });
+      }
       list.appendChild(btn);
     });
+
+    // Update difficulty buttons based on current pilot progress
+    const pilotData = this.getPilotData(this.playerPilotId);
+    const completed = pilotData.completedDifficulties || [];
+    const diffBtns = document.querySelectorAll('#diff-select button');
+    
+    diffBtns.forEach(btn => {
+      const val = parseInt(btn.dataset.val);
+      if (val === 0) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerText = "Novice";
+      } else {
+        const prevCompleted = completed.includes(val - 1);
+        btn.disabled = !prevCompleted;
+        btn.style.opacity = prevCompleted ? '1' : '0.4';
+        btn.innerText = prevCompleted ? (val === 1 ? "Pro" : "Elite") : "LOCKED";
+      }
+    });
+
     this.onResize();
   }
 
@@ -886,7 +931,7 @@ class Game {
     };
 
     info.innerHTML = `
-      <div style="margin-bottom:10px;">${VEHICLES[type].desc}</div>
+      <div style="margin-bottom:10px; text-align: left; width: 100%;">${VEHICLES[type].desc}</div>
       ${this.renderStatBars(baseStats, currentStats)}
     `;
 
@@ -1130,6 +1175,13 @@ class Game {
       document.getElementById('btn-league-next').innerText = "FINISH"; 
       const pilotData = this.getPilotData(this.playerPilotId);
       pilotData.campaign.inProgress = false;
+      
+      // Mark this difficulty as completed for this pilot
+      if (!pilotData.completedDifficulties) pilotData.completedDifficulties = [];
+      if (!pilotData.completedDifficulties.includes(this.difficulty)) {
+        pilotData.completedDifficulties.push(this.difficulty);
+      }
+      
       this.saveData();
     }
     else { 
