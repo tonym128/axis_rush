@@ -108,6 +108,7 @@ class Game {
 
     this.setupUI(); this.setupInputs(); this.setupTouchControls();
     window.addEventListener('resize', () => this.onResize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.onResize(), 200));
     
     window.gameInstance = this; // Global access for vehicle events
 
@@ -215,6 +216,7 @@ class Game {
       
       grid.appendChild(item);
     });
+    this.onResize();
   }
   
   applySettings() {
@@ -270,6 +272,7 @@ class Game {
         el._focusBound = true;
       }
     });
+    this.onResize();
   }
 
   renderSettings() {
@@ -387,9 +390,9 @@ class Game {
       const lvl = upg[stat];
       document.getElementById(`lvl-${stat}`).innerText = lvl;
       document.getElementById(`cost-${stat}`).innerText = lvl >= 5 ? 'MAX' : (lvl + 1) * 100;
-    });
-  }
-
+      });
+      this.onResize();
+      }
   renderStatBars(base, current) {
     const stats = [
       { label: 'TOP SPEED', key: 'speed' },
@@ -835,6 +838,7 @@ class Game {
       list.appendChild(btn);
       if (p.id === this.playerPilotId) updateInfo(p);
     }
+    this.onResize();
   }
 
   renderMapList() {
@@ -847,6 +851,7 @@ class Game {
       btn.addEventListener('click', () => { document.querySelectorAll('#map-select button').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); this.mapType = idx; this.updatePreview(idx); });
       list.appendChild(btn);
     });
+    this.onResize();
   }
 
   updatePreview(mapIdx) {
@@ -897,6 +902,7 @@ class Game {
     const pl3 = new THREE.PointLight(0xffffff, 300, 100); pl3.position.set(0, -10, 20); pl3.layers.enable(1);
     this.previewLights.add(amb, hemi, pl1, pl2, pl3);
     this.scene.add(this.previewLights);
+    this.onResize();
   }
 
   clearCarPreview() {
@@ -1139,6 +1145,7 @@ class Game {
       row.className = 'standings-row'; if (id === this.playerPilotId) row.classList.add('player');
       row.innerText = `${idx+1}. ${PILOTS[id].name} - ${this.campaignScores[id]} PTS`; list.appendChild(row);
     });
+    this.onResize();
   }
   
   startRace() {
@@ -1383,9 +1390,9 @@ class Game {
         <span>LAP TIME: ${currentLapTime}s</span>
         <span style="color:#0ff">BEST LAP: ${bestTime}s</span>
         ${diffStr}
-      </div>`;
+        </div>`;
     }
-
+    this.onResize();
     let raceOver = false;
     if (allRacers.some(r => r.lap > 3)) raceOver = true;
     if (raceOver && this.state !== 'FINISHED') this.finishRace(allRacers);
@@ -1506,6 +1513,7 @@ class Game {
                   (isNewBest ? "NEW BEST TIME!" : "") + `\nCREDITS EARNED: ${earnedCredits}\nTOTAL CREDITS: ${this.credits}`;
     }
     document.getElementById('go-stats').innerHTML = statsText.replace(/\n/g, '<br>');
+    this.onResize();
   }
   
   update(dt) {
@@ -1840,6 +1848,7 @@ class Game {
       });
       list.appendChild(row);
     });
+    this.onResize();
   }
 
   updateLobbyUI() {
@@ -1897,6 +1906,7 @@ class Game {
       hostControls.style.display = 'none';
       startBtn.style.display = 'none';
     }
+    this.onResize();
   }
   startMultiplayerRace(players, config) {
     this.gameMode = 'MULTIPLAYER';
