@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import './style.css';
 import { textureManager } from './textures.js';
 import { audioEngine } from './audio.js';
 import { Track, MAPS } from './track.js';
