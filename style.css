@@ -678,6 +678,37 @@ button.selected {
 }
 
 /* HUD elements */
+#race-progress-container {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #0ff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+  overflow: visible;
+  z-index: 100;
+}
+
+#race-progress-bar {
+  width: 0%;
+  height: 100%;
+  background: #0f0;
+  transition: width 0.1s linear, background-color 0.3s ease;
+  box-shadow: 0 0 15px currentColor;
+}
+
+.lap-marker {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: calc(100% + 4px);
+  background: #fff;
+  box-shadow: 0 0 5px #fff;
+}
+
 #hud-leaderboard {
   position: absolute;
   top: 2vh;

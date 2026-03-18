@@ -1549,9 +1549,19 @@ class Game {
     
     const numPlayers = allRacers.length;
     document.getElementById('pos-display').innerText = `POS: ${this.player.rank}/${numPlayers}`;
-    document.getElementById('lap-display').innerText = `LAP: ${Math.min(3, this.player.lap)}/3`;
+    document.getElementById('lap-display').innerText = `LAP: ${Math.min(GAME_CONFIG.TOTAL_LAPS, this.player.lap)}/${GAME_CONFIG.TOTAL_LAPS}`;
     document.getElementById('speed-display').innerText = `SPEED: ${Math.floor(this.player.speed)} KM/H`;
     document.getElementById('weapon-display').innerText = `WEAPON: ${(this.player.weapon || 'NONE').toUpperCase()}`;
+
+    // Update Race Progress Bar
+    const progressFill = document.getElementById('race-progress-bar');
+    if (progressFill) {
+      const totalLaps = GAME_CONFIG.TOTAL_LAPS;
+      const progress = Math.min(1, Math.max(0, this.player.lapProgress / totalLaps));
+      progressFill.style.width = `${progress * 100}%`;
+      progressFill.style.backgroundColor = (this.player.rank === 1) ? '#0f0' : '#f80';
+      progressFill.style.color = (this.player.rank === 1) ? '#0f0' : '#f80'; // For box-shadow currentColor
+    }
 
     // Update Energy Bar
     const energyFill = document.getElementById('energy-bar-fill');
@@ -1641,7 +1651,7 @@ class Game {
     this.onResize();
 
     let raceOver = false;
-    if (allRacers.some(r => r.lap > 3)) raceOver = true;
+    if (allRacers.some(r => r.lap > GAME_CONFIG.TOTAL_LAPS)) raceOver = true;
     if (raceOver && this.state !== 'FINISHED') this.finishRace(allRacers);
   }
 
@@ -1726,7 +1736,7 @@ class Game {
     let ghostLapTimes = [];
     if (this.gameMode === 'TIME_TRIAL' && this.recordedGhost) {
       // Extract lap times from ghost path
-      for (let lap = 1; lap <= 3; lap++) {
+      for (let lap = 1; lap <= GAME_CONFIG.TOTAL_LAPS; lap++) {
         let f1 = null, f2 = null;
         for (let i = 0; i < this.recordedGhost.length - 1; i++) {
           if (this.recordedGhost[i].lp <= lap && this.recordedGhost[i+1].lp > lap) {
